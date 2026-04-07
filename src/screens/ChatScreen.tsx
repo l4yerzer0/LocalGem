@@ -16,9 +16,10 @@ import { Header } from '../components/ui/Header';
 import { ChatMessage } from '../components/chat/ChatMessage';
 import { ChatInput } from '../components/chat/ChatInput';
 import { Sidebar } from '../components/ui/Sidebar';
-import { ModelsScreen } from './ModelsScreen';
+import ModelsScreen from './ModelsScreen';
 import { colors, fonts } from '../theme/colors';
 import { useChatStore } from '../store/chatStore';
+import { useModelStore } from '../store/modelStore';
 
 const { LiteRtModule } = NativeModules;
 const eventEmitter = new NativeEventEmitter(LiteRtModule);
@@ -31,7 +32,11 @@ export const ChatScreen: React.FC = () => {
   const updateLastMessage = useChatStore(state => state.updateLastMessage);
   const activeView = useChatStore(state => state.activeView);
 
+  const { activeModel, isInitialized, setInitialized } = useModelStore();
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
+  
   const flatListRef = useRef<FlatList>(null);
   const currentAssistantMsg = useRef("");
 
@@ -61,15 +66,30 @@ export const ChatScreen: React.FC = () => {
     };
   }, [currentChatId]);
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     if (!currentChatId) return;
+    if (!activeModel) {
+        setLoadingStatus("Сначала импортируйте и выберите модель");
+        setTimeout(() => setLoadingStatus(null), 3000);
+        return;
+    }
 
     addMessage(currentChatId, 'user', text);
-    addMessage(currentChatId, 'assistant', "...");
-    currentAssistantMsg.current = "";
+    
+    try {
+      if (!isInitialized) {
+        setLoadingStatus("Загружаем модель в память...");
+        await LiteRtModule.initializeModel(activeModel.path);
+        setInitialized(true);
+        setLoadingStatus(null);
+      }
 
-    if (LiteRtModule) {
+      addMessage(currentChatId, 'assistant', "...");
+      currentAssistantMsg.current = "";
       LiteRtModule.sendMessage(text);
+    } catch (e: any) {
+      setLoadingStatus(`Ошибка инициализации: ${e.message}`);
+      setTimeout(() => setLoadingStatus(null), 5000);
     }
   };
 
@@ -101,29 +121,37 @@ export const ChatScreen: React.FC = () => {
       
       {activeView === 'models' ? (
         <ModelsScreen />
-      ) : isEmpty ? (
-        <View style={styles.emptyContainer}>
-            <View style={styles.emptyTitleRow}>
-                <Svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" color={colors.accent} style={styles.emptyIcon}>
-                    <Path d="M12 2L4.5 9.5 12 17l7.5-7.5L12 2zm0 12l-4-4 4-4 4 4-4 4z" />
-                </Svg>
-                <Text style={styles.emptyTitle}>Добрый день, как я{"\n"}могу помочь?</Text>
-            </View>
-            <ChatInput onSend={handleSend} isCentered={true} />
-        </View>
       ) : (
         <View style={styles.chatWrapper}>
-          <FlatList
-            ref={flatListRef}
-            data={currentChat?.messages || []}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ChatMessage role={item.role} content={item.content} />
-            )}
-            contentContainerStyle={styles.listContent}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
-          <ChatInput onSend={handleSend} isCentered={false} />
+          {isEmpty ? (
+            <View style={styles.emptyContainer}>
+                <View style={styles.emptyTitleRow}>
+                    <Svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" color={colors.accent} style={styles.emptyIcon}>
+                        <Path d="M12 2L4.5 9.5 12 17l7.5-7.5L12 2zm0 12l-4-4 4-4 4 4-4 4z" />
+                    </Svg>
+                    <Text style={styles.emptyTitle}>Добрый день, как я{"\n"}могу помочь?</Text>
+                </View>
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={currentChat?.messages || []}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <ChatMessage role={item.role} content={item.content} />
+              )}
+              contentContainerStyle={styles.listContent}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            />
+          )}
+          
+          {loadingStatus && (
+            <View style={styles.statusToast}>
+              <Text style={styles.statusText}>{loadingStatus}</Text>
+            </View>
+          )}
+
+          <ChatInput onSend={handleSend} isCentered={isEmpty} />
         </View>
       )}
       
@@ -171,4 +199,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 36,
   },
+  statusToast: {
+    position: 'absolute',
+    bottom: 120,
+    alignSelf: 'center',
+    backgroundColor: '#2b2b2b',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    zIndex: 100,
+  },
+  statusText: {
+    color: colors.text.primary,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+  }
 });

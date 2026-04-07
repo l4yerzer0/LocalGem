@@ -6,7 +6,7 @@ import { useModelStore, AIModel } from '../store/modelStore';
 
 const { LiteRtModule } = NativeModules;
 
-export const ModelsScreen: React.FC = () => {
+const ModelsScreen: React.FC = () => {
   const { models, activeModel, setModels, addModel, removeModel, setActiveModel } = useModelStore();
   const [isImporting, setIsImporting] = useState(false);
 
@@ -204,3 +204,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   }
 });
+
+export default ModelsScreen;
