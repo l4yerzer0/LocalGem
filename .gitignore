@@ -1,0 +1,30 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Android
+.gradle/
+build/
+app/build/
+*.iml
+.idea/
+local.properties
+*.keystore
+*.jks
+app/src/main/assets/index.android.bundle
+
+# Metro / React Native
+.metro/
+.expo/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# --- LOCALGEM MODELS (CRITICAL) ---
+# Не храним тяжелые модели в гите
+*.litertlm
+*.tflite
+*.bin
+android/app/src/main/assets/models/

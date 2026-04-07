@@ -1,0 +1,50 @@
+buildscript {
+    ext {
+        buildToolsVersion = "34.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 34
+        targetSdkVersion = 34
+        kotlin_version = '2.2.0'
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.8.2' // Версия из галереи
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        maven {
+            url "$rootDir/../node_modules/react-native/android"
+        }
+        maven {
+            url "$rootDir/../node_modules/hermes-engine/android"
+        }
+        google()
+        mavenCentral()
+        maven { url "https://jitpack.io" }
+    }
+
+    // Это исправит ошибку в react-native-svg и других библиотеках
+    configurations.all {
+        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'com.facebook.react' && details.requested.name == 'react-native') {
+                details.useTarget("com.facebook.react:react-android:0.74.1")
+            }
+        }
+    }
+
+    // Принудительная установка Java 17 для всех Android-библиотек (в т.ч. react-native-svg)
+    plugins.withId("com.android.library") {
+        android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+    }
+}
