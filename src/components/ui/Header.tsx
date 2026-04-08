@@ -7,9 +7,15 @@ interface HeaderProps {
   onMenuPress: () => void;
   title?: string;
   onSettingsPress?: () => void;
+  showSettings?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onMenuPress, title = "LocalGem", onSettingsPress }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  onMenuPress, 
+  title = "LocalGem", 
+  onSettingsPress, 
+  showSettings = true 
+}) => {
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onMenuPress} style={styles.menuButton}>
@@ -22,11 +28,17 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress, title = "LocalGem",
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
       </View>
 
-      <TouchableOpacity onPress={onSettingsPress} style={styles.settingsButton}>
-         <Svg width="24" height="24" fill="none" stroke={colors.text.tertiary} viewBox="0 0 24 24">
-            <Path strokeWidth="2" strokeLinecap="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-         </Svg>
-      </TouchableOpacity>
+      <View style={styles.rightSection}>
+        {showSettings ? (
+          <TouchableOpacity onPress={onSettingsPress} style={styles.settingsButton}>
+            <Svg width="24" height="24" fill="none" stroke={colors.text.tertiary} viewBox="0 0 24 24">
+                <Path strokeWidth="2" strokeLinecap="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </Svg>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.settingsPlaceholder} />
+        )}
+      </View>
     </View>
   );
 };
@@ -45,13 +57,16 @@ const styles = StyleSheet.create({
     zIndex: 40,
   },
   menuButton: {
-    padding: 6,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titleContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   },
   title: {
     fontSize: 14,
@@ -59,7 +74,19 @@ const styles = StyleSheet.create({
     color: '#d1d5db',
     textAlign: 'center',
   },
+  rightSection: {
+    width: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   settingsButton: {
-    padding: 6,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsPlaceholder: {
+    width: 40,
+    height: 40,
   }
 });

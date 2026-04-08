@@ -19,8 +19,8 @@ export interface Chat {
 interface ChatStore {
   chats: Chat[];
   currentChatId: string | null;
-  activeView: 'chat' | 'models' | 'settings';
-  setActiveView: (view: 'chat' | 'models' | 'settings') => void;
+  activeView: 'chat' | 'models' | 'settings' | 'device';
+  setActiveView: (view: 'chat' | 'models' | 'settings' | 'device') => void;
   addChat: (title: string) => string;
   addMessage: (chatId: string, role: Role, content: string) => void;
   updateLastMessage: (chatId: string, content: string) => void;

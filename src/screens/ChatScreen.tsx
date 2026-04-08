@@ -17,9 +17,12 @@ import { ChatMessage } from '../components/chat/ChatMessage';
 import { ChatInput } from '../components/chat/ChatInput';
 import { Sidebar } from '../components/ui/Sidebar';
 import ModelsScreen from './ModelsScreen';
+import { SettingsScreen } from './SettingsScreen';
+import { DeviceScreen } from './DeviceScreen';
 import { colors, fonts } from '../theme/colors';
 import { useChatStore } from '../store/chatStore';
 import { useModelStore } from '../store/modelStore';
+import { useSettingsStore } from '../store/settingsStore';
 
 const { LiteRtModule } = NativeModules;
 const eventEmitter = new NativeEventEmitter(LiteRtModule);
@@ -31,8 +34,10 @@ export const ChatScreen: React.FC = () => {
   const addMessage = useChatStore(state => state.addMessage);
   const updateLastMessage = useChatStore(state => state.updateLastMessage);
   const activeView = useChatStore(state => state.activeView);
+  const setActiveView = useChatStore(state => state.setActiveView);
 
-  const { activeModel, isInitialized, setInitialized } = useModelStore();
+  const { activeModel, isInitialized, setInitialized, setModels, setActiveModel } = useModelStore();
+  const settings = useSettingsStore();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
@@ -44,6 +49,20 @@ export const ChatScreen: React.FC = () => {
     if (chats.length === 0) {
       addChat("New Chat");
     }
+
+    const initModels = async () => {
+        if (!LiteRtModule) return;
+        try {
+            const installed = await LiteRtModule.getInstalledModels();
+            setModels(installed);
+            if (installed.length > 0 && !activeModel) {
+                setActiveModel(installed[0]);
+            }
+        } catch (e) {
+            console.error("Auto load models failed", e);
+        }
+    };
+    initModels();
   }, []);
 
   const currentChat = chats.find(c => c.id === currentChatId);
@@ -79,7 +98,14 @@ export const ChatScreen: React.FC = () => {
     try {
       if (!isInitialized) {
         setLoadingStatus("Загружаем модель в память...");
-        await LiteRtModule.initializeModel(activeModel.path);
+        await LiteRtModule.initializeModel(
+            activeModel.path,
+            settings.backend,
+            settings.temperature,
+            settings.topK,
+            settings.topP,
+            settings.maxTokens
+        );
         setInitialized(true);
         setLoadingStatus(null);
       }
@@ -88,7 +114,7 @@ export const ChatScreen: React.FC = () => {
       currentAssistantMsg.current = "";
       LiteRtModule.sendMessage(text);
     } catch (e: any) {
-      setLoadingStatus(`Ошибка инициализации: ${e.message}`);
+      setLoadingStatus(`Ошибка: ${e.message}`);
       setTimeout(() => setLoadingStatus(null), 5000);
     }
   };
@@ -116,11 +142,17 @@ export const ChatScreen: React.FC = () => {
 
       <Header 
         onMenuPress={() => setIsSidebarOpen(true)} 
-        title={activeView === 'models' ? 'Модели' : (isEmpty ? "" : currentChat?.title || "LocalGem")}
+        onSettingsPress={() => setActiveView(activeView === 'settings' ? 'chat' : 'settings')}
+        showSettings={activeView === 'chat'}
+        title={activeView === 'models' ? 'Модели' : activeView === 'settings' ? 'Настройки' : activeView === 'device' ? 'Устройство' : (isEmpty ? "" : currentChat?.title || "LocalGem")}
       />
       
       {activeView === 'models' ? (
         <ModelsScreen />
+      ) : activeView === 'settings' ? (
+        <SettingsScreen />
+      ) : activeView === 'device' ? (
+        <DeviceScreen />
       ) : (
         <View style={styles.chatWrapper}>
           {isEmpty ? (

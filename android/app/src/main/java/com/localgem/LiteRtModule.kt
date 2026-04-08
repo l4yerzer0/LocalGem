@@ -25,19 +25,41 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
     override fun getName(): String = "LiteRtModule"
 
     @ReactMethod
-    fun initializeModel(modelPath: String, promise: Promise) {
+    fun initializeModel(
+        modelPath: String, 
+        backendType: String,
+        temperature: Double,
+        topK: Int,
+        topP: Double,
+        maxTokens: Int,
+        promise: Promise
+    ) {
         scope.launch {
             try {
+                val preferredBackend = when (backendType) {
+                    "GPU" -> Backend.GPU()
+                    "NPU" -> Backend.NPU(nativeLibraryDir = reactApplicationContext.applicationInfo.nativeLibraryDir)
+                    else -> Backend.CPU()
+                }
+
                 val config = EngineConfig(
                     modelPath = modelPath,
-                    backend = Backend.GPU() 
+                    backend = preferredBackend,
+                    maxNumTokens = maxTokens
                 )
                 engine = Engine(config)
                 engine?.initialize()
                 
-                conversation = engine?.createConversation(ConversationConfig())
+                val convConfig = ConversationConfig(
+                    samplerConfig = SamplerConfig(
+                        topK = topK,
+                        topP = topP,
+                        temperature = temperature
+                    )
+                )
+                conversation = engine?.createConversation(convConfig)
                 
-                promise.resolve("LocalGem: Model ready!")
+                promise.resolve("LocalGem: Model ready with $backendType")
             } catch (e: Exception) {
                 promise.reject("INIT_ERROR", e.message)
             }
@@ -69,8 +91,6 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
         }
     }
 
-    // --- УПРАВЛЕНИЕ МОДЕЛЯМИ ---
-
     @ReactMethod
     fun importModel(promise: Promise) {
         val activity = currentActivity
@@ -82,7 +102,7 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
         importPromise = promise
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*" // Разрешаем все типы, т.к. .litertlm не имеет стандартного MIME
+            type = "*/*"
         }
         activity.startActivityForResult(intent, 1001)
     }
@@ -97,8 +117,6 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
             importsDir.listFiles()?.forEach { file ->
                 if (file.name.endsWith(".litertlm") || file.name.endsWith(".tflite")) {
                     val map = Arguments.createMap()
-                    
-                    // Делаем имя красивым: "gemma_2b.litertlm" -> "Gemma 2b"
                     val displayName = file.name
                         .substringBeforeLast(".")
                         .replace("_", " ")
@@ -126,27 +144,57 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
             if (file.exists() && file.delete()) {
                 promise.resolve(true)
             } else {
-                promise.reject("DELETE_ERROR", "File not found or cannot be deleted")
+                promise.reject("DELETE_ERROR", "File not found")
             }
         } catch (e: Exception) {
             promise.reject("DELETE_ERROR", e.message)
         }
     }
 
-    // --- ОБРАБОТКА ВЫБОРА ФАЙЛА ---
+    @ReactMethod
+    fun getDeviceInfo(promise: Promise) {
+        try {
+            val map = Arguments.createMap()
+            
+            // 1. Модель и бренд
+            map.putString("model", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            map.putString("androidVersion", android.os.Build.VERSION.RELEASE)
+            
+            // 2. Оперативная память (RAM)
+            val activityManager = reactApplicationContext.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val memoryInfo = android.app.ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+            map.putDouble("totalRam", memoryInfo.totalMem.toDouble())
+            map.putDouble("availRam", memoryInfo.availMem.toDouble())
+            
+            // 3. Процессор
+            map.putString("cpu", android.os.Build.HARDWARE)
+            map.putInt("cores", Runtime.getRuntime().availableProcessors())
+            
+            // 4. Температура (через Battery Intent)
+            val intent = reactApplicationContext.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+            val temp = intent?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+            map.putDouble("temperature", temp.toDouble() / 10.0) // Конвертируем в Цельсии
+            
+            // 5. Проверка поддержки ускорителей
+            map.putBoolean("hasNpu", android.os.Build.HARDWARE.lowercase().contains("qcom") || 
+                                    android.os.Build.HARDWARE.lowercase().contains("mt6") ||
+                                    android.os.Build.HARDWARE.lowercase().contains("exynos") ||
+                                    android.os.Build.HARDWARE.lowercase().contains("snapdragon"))
+            
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("DEVICE_INFO_ERROR", e.message)
+        }
+    }
 
     override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == 1001 && resultCode == Activity.RESULT_OK) {
             val uri = data?.data
-            if (uri != null) {
-                copyFileToAppStorage(uri)
-            } else {
-                importPromise?.reject("IMPORT_CANCELLED", "No file selected")
-                importPromise = null
-            }
+            if (uri != null) copyFileToAppStorage(uri)
+            else importPromise?.reject("CANCELLED", "No file")
         } else if (requestCode == 1001) {
-            importPromise?.reject("IMPORT_CANCELLED", "Import cancelled")
-            importPromise = null
+            importPromise?.reject("CANCELLED", "Cancelled")
         }
     }
 
@@ -154,38 +202,26 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
         scope.launch(Dispatchers.IO) {
             try {
                 val context = reactApplicationContext
-                val cursor = context.contentResolver.query(uri, null, null, null, null)
-                var name = "imported_model.litertlm"
-                
-                cursor?.use {
+                var name = "model.litertlm"
+                context.contentResolver.query(uri, null, null, null, null)?.use {
                     if (it.moveToFirst()) {
-                        val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                        if (nameIndex != -1) name = it.getString(nameIndex)
+                        val i = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (i != -1) name = it.getString(i)
                     }
                 }
-
                 val modelsDir = File(context.getExternalFilesDir(null), "models")
                 if (!modelsDir.exists()) modelsDir.mkdirs()
-
                 val outputFile = File(modelsDir, name)
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val outputStream = FileOutputStream(outputFile)
-
-                inputStream?.use { input ->
-                    outputStream.use { output ->
-                        input.copyTo(output)
-                    }
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(outputFile).use { output -> input.copyTo(output) }
                 }
-                
-                // Возвращаем данные о загруженной модели
                 val map = Arguments.createMap()
                 map.putString("name", name)
                 map.putString("path", outputFile.absolutePath)
                 map.putDouble("size", outputFile.length().toDouble())
-                
                 importPromise?.resolve(map)
             } catch (e: Exception) {
-                importPromise?.reject("COPY_ERROR", e.message)
+                importPromise?.reject("ERROR", e.message)
             } finally {
                 importPromise = null
             }

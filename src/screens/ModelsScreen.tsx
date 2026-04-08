@@ -6,26 +6,9 @@ import { useModelStore, AIModel } from '../store/modelStore';
 
 const { LiteRtModule } = NativeModules;
 
-const ModelsScreen: React.FC = () => {
-  const { models, activeModel, setModels, addModel, removeModel, setActiveModel } = useModelStore();
+export const ModelsScreen: React.FC = () => {
+  const { models, activeModel, addModel, removeModel, setActiveModel } = useModelStore();
   const [isImporting, setIsImporting] = useState(false);
-
-  useEffect(() => {
-    loadModels();
-  }, []);
-
-  const loadModels = async () => {
-    if (!LiteRtModule) return;
-    try {
-      const installedModels = await LiteRtModule.getInstalledModels();
-      setModels(installedModels);
-      if (installedModels.length > 0 && !activeModel) {
-        setActiveModel(installedModels[0]);
-      }
-    } catch (e) {
-      console.error("Failed to load models", e);
-    }
-  };
 
   const handleImport = async () => {
     if (!LiteRtModule) return;
