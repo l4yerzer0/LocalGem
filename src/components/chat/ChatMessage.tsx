@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { MarkdownLite } from './MarkdownLite';
 import { colors, fonts } from '../../theme/colors';
 
-// Включаем анимацию для Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -59,7 +59,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, stats }
           </View>
         ) : (
           <View style={styles.assistantMessageWrapper}>
-            <Text style={styles.assistantText}>{content}</Text>
+            <MarkdownLite content={content} />
             
             {stats && (
               <View style={styles.statsWrapper}>
@@ -73,10 +73,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, stats }
                 {showFullStats && (
                   <View style={styles.expandedStats}>
                     <View style={styles.statsGrid}>
-                        <InfoBit label="Back" value={stats.backend} />
-                        <InfoBit label="Total" value={`${stats.totalTime.toFixed(1)}s`} />
-                        <InfoBit label="First" value={`${stats.firstTokenTime.toFixed(2)}s`} />
-                        <InfoBit label="Tokens" value={stats.tokenCount} />
+                        <InfoBit label="Ускоритель" value={stats.backend} />
+                        <InfoBit label="Время" value={`${stats.totalTime.toFixed(1)}с`} />
+                        <InfoBit label="Первый" value={`${stats.firstTokenTime.toFixed(2)}с`} />
+                        <InfoBit label="Токены" value={stats.tokenCount} />
                     </View>
                   </View>
                 )}
@@ -147,6 +147,7 @@ const styles = StyleSheet.create({
   },
   assistantMessageWrapper: {
     alignItems: 'flex-start',
+    flex: 1,
   },
   assistantText: {
     fontSize: 15,
