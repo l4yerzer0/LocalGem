@@ -7,6 +7,13 @@ export interface Message {
   role: Role;
   content: string;
   timestamp: number;
+  stats?: {
+    totalTime: number;
+    firstTokenTime: number;
+    tokenCount: number;
+    tps: number;
+    backend: string;
+  };
 }
 
 export interface Chat {
@@ -24,6 +31,7 @@ interface ChatStore {
   addChat: (title: string) => string;
   addMessage: (chatId: string, role: Role, content: string) => void;
   updateLastMessage: (chatId: string, content: string) => void;
+  updateLastMessageWithStats: (chatId: string, content: string, stats: Message['stats']) => void;
   setCurrentChat: (chatId: string) => void;
   deleteChat: (chatId: string) => void;
 }
@@ -61,6 +69,20 @@ export const useChatStore = create<ChatStore>((set) => ({
         if (chat.id === chatId && chat.messages.length > 0) {
           const newMessages = [...chat.messages];
           newMessages[newMessages.length - 1].content = content;
+          return { ...chat, messages: newMessages };
+        }
+        return chat;
+      })
+    }));
+  },
+
+  updateLastMessageWithStats: (chatId, content, stats) => {
+    set((state) => ({
+      chats: state.chats.map((chat) => {
+        if (chat.id === chatId && chat.messages.length > 0) {
+          const newMessages = [...chat.messages];
+          const lastIndex = newMessages.length - 1;
+          newMessages[lastIndex] = { ...newMessages[lastIndex], content, stats };
           return { ...chat, messages: newMessages };
         }
         return chat;

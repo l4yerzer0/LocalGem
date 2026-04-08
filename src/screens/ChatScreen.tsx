@@ -33,6 +33,7 @@ export const ChatScreen: React.FC = () => {
   const addChat = useChatStore(state => state.addChat);
   const addMessage = useChatStore(state => state.addMessage);
   const updateLastMessage = useChatStore(state => state.updateLastMessage);
+  const updateLastMessageWithStats = useChatStore(state => state.updateLastMessageWithStats);
   const activeView = useChatStore(state => state.activeView);
   const setActiveView = useChatStore(state => state.setActiveView);
 
@@ -75,7 +76,10 @@ export const ChatScreen: React.FC = () => {
       }
     });
 
-    const doneSub = eventEmitter.addListener('onResponseDone', () => {
+    const doneSub = eventEmitter.addListener('onResponseDone', (stats: any) => {
+      if (currentChatId) {
+        updateLastMessageWithStats(currentChatId, currentAssistantMsg.current, stats);
+      }
       currentAssistantMsg.current = "";
     });
 
@@ -172,7 +176,7 @@ export const ChatScreen: React.FC = () => {
                 data={currentChat?.messages || []}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                  <ChatMessage role={item.role} content={item.content} />
+                  <ChatMessage role={item.role} content={item.content} stats={item.stats} />
                 )}
                 contentContainerStyle={styles.listContent}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}

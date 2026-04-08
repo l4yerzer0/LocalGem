@@ -15,6 +15,7 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
 
     private var engine: Engine? = null
     private var conversation: Conversation? = null
+    private var currentBackend: String = "CPU"
     private val scope = CoroutineScope(Dispatchers.Default)
     private var importPromise: Promise? = null
 
@@ -36,6 +37,7 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
     ) {
         scope.launch {
             try {
+                currentBackend = backendType
                 val preferredBackend = when (backendType) {
                     "GPU" -> Backend.GPU()
                     "NPU" -> Backend.NPU(nativeLibraryDir = reactApplicationContext.applicationInfo.nativeLibraryDir)
@@ -74,13 +76,31 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
             try {
                 val contents = Contents.of(listOf(Content.Text(text)))
                 
+                var tokenCount = 0
+                val startTime = System.currentTimeMillis()
+                var firstTokenTime: Long = 0
+
                 conv.sendMessageAsync(contents, object : MessageCallback {
                     override fun onMessage(message: Message) {
+                        if (tokenCount == 0) {
+                            firstTokenTime = System.currentTimeMillis() - startTime
+                        }
+                        tokenCount++
                         sendEvent("onTokenReceived", message.toString())
                     }
+
                     override fun onDone() {
-                        sendEvent("onResponseDone", null)
+                        val totalTime = System.currentTimeMillis() - startTime
+                        val stats = Arguments.createMap().apply {
+                            putDouble("totalTime", totalTime.toDouble() / 1000.0)
+                            putDouble("firstTokenTime", firstTokenTime.toDouble() / 1000.0)
+                            putInt("tokenCount", tokenCount)
+                            putDouble("tps", if (totalTime > 0) (tokenCount.toDouble() / (totalTime.toDouble() / 1000.0)) else 0.0)
+                            putString("backend", currentBackend)
+                        }
+                        sendEvent("onResponseDone", stats)
                     }
+
                     override fun onError(throwable: Throwable) {
                         sendEvent("onError", throwable.message)
                     }
@@ -92,13 +112,39 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
     }
 
     @ReactMethod
-    fun importModel(promise: Promise) {
-        val activity = currentActivity
-        if (activity == null) {
-            promise.reject("NO_ACTIVITY", "Activity is null")
-            return
+    fun getDeviceInfo(promise: Promise) {
+        try {
+            val map = Arguments.createMap()
+            map.putString("model", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            map.putString("androidVersion", android.os.Build.VERSION.RELEASE)
+            
+            val activityManager = reactApplicationContext.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val memoryInfo = android.app.ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+            map.putDouble("totalRam", memoryInfo.totalMem.toDouble())
+            map.putDouble("availRam", memoryInfo.availMem.toDouble())
+            
+            map.putString("cpu", android.os.Build.HARDWARE)
+            map.putInt("cores", Runtime.getRuntime().availableProcessors())
+            
+            val intent = reactApplicationContext.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+            val temp = intent?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+            map.putDouble("temperature", temp.toDouble() / 10.0)
+            
+            map.putBoolean("hasNpu", android.os.Build.HARDWARE.lowercase().contains("qcom") || 
+                                    android.os.Build.HARDWARE.lowercase().contains("mt6") ||
+                                    android.os.Build.HARDWARE.lowercase().contains("exynos") ||
+                                    android.os.Build.HARDWARE.lowercase().contains("snapdragon"))
+            
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("DEVICE_INFO_ERROR", e.message)
         }
-        
+    }
+
+    @ReactMethod
+    fun importModel(promise: Promise) {
+        val activity = currentActivity ?: return promise.reject("NO_ACTIVITY", "Activity is null")
         importPromise = promise
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -112,18 +158,11 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
         try {
             val importsDir = File(reactApplicationContext.getExternalFilesDir(null), "models")
             if (!importsDir.exists()) importsDir.mkdirs()
-            
             val modelsArray = Arguments.createArray()
             importsDir.listFiles()?.forEach { file ->
                 if (file.name.endsWith(".litertlm") || file.name.endsWith(".tflite")) {
                     val map = Arguments.createMap()
-                    val displayName = file.name
-                        .substringBeforeLast(".")
-                        .replace("_", " ")
-                        .replace("-", " ")
-                        .split(" ")
-                        .joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
-
+                    val displayName = file.name.substringBeforeLast(".").replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
                     map.putString("name", displayName)
                     map.putString("fileName", file.name)
                     map.putString("path", file.absolutePath)
@@ -132,70 +171,22 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
                 }
             }
             promise.resolve(modelsArray)
-        } catch (e: Exception) {
-            promise.reject("READ_ERROR", e.message)
-        }
+        } catch (e: Exception) { promise.reject("READ_ERROR", e.message) }
     }
 
     @ReactMethod
     fun deleteModel(fileName: String, promise: Promise) {
         try {
             val file = File(reactApplicationContext.getExternalFilesDir(null), "models/$fileName")
-            if (file.exists() && file.delete()) {
-                promise.resolve(true)
-            } else {
-                promise.reject("DELETE_ERROR", "File not found")
-            }
-        } catch (e: Exception) {
-            promise.reject("DELETE_ERROR", e.message)
-        }
-    }
-
-    @ReactMethod
-    fun getDeviceInfo(promise: Promise) {
-        try {
-            val map = Arguments.createMap()
-            
-            // 1. Модель и бренд
-            map.putString("model", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-            map.putString("androidVersion", android.os.Build.VERSION.RELEASE)
-            
-            // 2. Оперативная память (RAM)
-            val activityManager = reactApplicationContext.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-            val memoryInfo = android.app.ActivityManager.MemoryInfo()
-            activityManager.getMemoryInfo(memoryInfo)
-            map.putDouble("totalRam", memoryInfo.totalMem.toDouble())
-            map.putDouble("availRam", memoryInfo.availMem.toDouble())
-            
-            // 3. Процессор
-            map.putString("cpu", android.os.Build.HARDWARE)
-            map.putInt("cores", Runtime.getRuntime().availableProcessors())
-            
-            // 4. Температура (через Battery Intent)
-            val intent = reactApplicationContext.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
-            val temp = intent?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
-            map.putDouble("temperature", temp.toDouble() / 10.0) // Конвертируем в Цельсии
-            
-            // 5. Проверка поддержки ускорителей
-            map.putBoolean("hasNpu", android.os.Build.HARDWARE.lowercase().contains("qcom") || 
-                                    android.os.Build.HARDWARE.lowercase().contains("mt6") ||
-                                    android.os.Build.HARDWARE.lowercase().contains("exynos") ||
-                                    android.os.Build.HARDWARE.lowercase().contains("snapdragon"))
-            
-            promise.resolve(map)
-        } catch (e: Exception) {
-            promise.reject("DEVICE_INFO_ERROR", e.message)
-        }
+            if (file.exists() && file.delete()) promise.resolve(true)
+            else promise.reject("DELETE_ERROR", "File not found")
+        } catch (e: Exception) { promise.reject("DELETE_ERROR", e.message) }
     }
 
     override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == 1001 && resultCode == Activity.RESULT_OK) {
-            val uri = data?.data
-            if (uri != null) copyFileToAppStorage(uri)
-            else importPromise?.reject("CANCELLED", "No file")
-        } else if (requestCode == 1001) {
-            importPromise?.reject("CANCELLED", "Cancelled")
-        }
+            data?.data?.let { copyFileToAppStorage(it) } ?: importPromise?.reject("CANCELLED", "No file")
+        } else if (requestCode == 1001) importPromise?.reject("CANCELLED", "Cancelled")
     }
 
     private fun copyFileToAppStorage(uri: Uri) {
@@ -215,16 +206,14 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(outputFile).use { output -> input.copyTo(output) }
                 }
-                val map = Arguments.createMap()
-                map.putString("name", name)
-                map.putString("path", outputFile.absolutePath)
-                map.putDouble("size", outputFile.length().toDouble())
+                val map = Arguments.createMap().apply {
+                    putString("name", name)
+                    putString("path", outputFile.absolutePath)
+                    putDouble("size", outputFile.length().toDouble())
+                }
                 importPromise?.resolve(map)
-            } catch (e: Exception) {
-                importPromise?.reject("ERROR", e.message)
-            } finally {
-                importPromise = null
-            }
+            } catch (e: Exception) { importPromise?.reject("ERROR", e.message) }
+            finally { importPromise = null }
         }
     }
 
