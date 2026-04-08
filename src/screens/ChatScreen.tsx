@@ -131,18 +131,22 @@ export const ChatScreen: React.FC = () => {
                     </Svg>
                     <Text style={styles.emptyTitle}>Добрый день, как я{"\n"}могу помочь?</Text>
                 </View>
+                <ChatInput onSend={handleSend} isCentered={true} />
             </View>
           ) : (
-            <FlatList
-              ref={flatListRef}
-              data={currentChat?.messages || []}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <ChatMessage role={item.role} content={item.content} />
-              )}
-              contentContainerStyle={styles.listContent}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            />
+            <>
+              <FlatList
+                ref={flatListRef}
+                data={currentChat?.messages || []}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <ChatMessage role={item.role} content={item.content} />
+                )}
+                contentContainerStyle={styles.listContent}
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              />
+              <ChatInput onSend={handleSend} isCentered={false} />
+            </>
           )}
           
           {loadingStatus && (
@@ -150,8 +154,6 @@ export const ChatScreen: React.FC = () => {
               <Text style={styles.statusText}>{loadingStatus}</Text>
             </View>
           )}
-
-          <ChatInput onSend={handleSend} isCentered={isEmpty} />
         </View>
       )}
       

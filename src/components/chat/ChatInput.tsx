@@ -47,14 +47,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, isCentered = false
           </View>
           
           <View style={styles.rightActions}>
-            {!isCentered && (
-              <TouchableOpacity style={styles.modelPickerBtn}>
-                <Text style={styles.modelPickerText} numberOfLines={1}>{activeModel ? activeModel.name : "Нет модели"}</Text>
-                <Svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <Path strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </Svg>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.modelPickerBtn}>
+              <Text style={styles.modelPickerText} numberOfLines={1}>{activeModel ? activeModel.name : "Нет модели"}</Text>
+              <Svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <Path strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </Svg>
+            </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.sendButton, text.length > 0 && styles.sendButtonActive]} 

@@ -97,7 +97,17 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
             importsDir.listFiles()?.forEach { file ->
                 if (file.name.endsWith(".litertlm") || file.name.endsWith(".tflite")) {
                     val map = Arguments.createMap()
-                    map.putString("name", file.name)
+                    
+                    // Делаем имя красивым: "gemma_2b.litertlm" -> "Gemma 2b"
+                    val displayName = file.name
+                        .substringBeforeLast(".")
+                        .replace("_", " ")
+                        .replace("-", " ")
+                        .split(" ")
+                        .joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
+
+                    map.putString("name", displayName)
+                    map.putString("fileName", file.name)
                     map.putString("path", file.absolutePath)
                     map.putDouble("size", file.length().toDouble())
                     modelsArray.pushMap(map)
