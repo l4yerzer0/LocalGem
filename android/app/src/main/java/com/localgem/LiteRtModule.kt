@@ -2,12 +2,16 @@ package com.localgem
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Base64
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.google.ai.edge.litertlm.*
 import kotlinx.coroutines.*
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
@@ -18,6 +22,7 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
     private var currentBackend: String = "CPU"
     private val scope = CoroutineScope(Dispatchers.Default)
     private var importPromise: Promise? = null
+    private var imagePickerPromise: Promise? = null
 
     init {
         reactContext.addActivityEventListener(this)
@@ -26,15 +31,7 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
     override fun getName(): String = "LiteRtModule"
 
     @ReactMethod
-    fun initializeModel(
-        modelPath: String, 
-        backendType: String,
-        temperature: Double,
-        topK: Int,
-        topP: Double,
-        maxTokens: Int,
-        promise: Promise
-    ) {
+    fun initializeModel(modelPath: String, backendType: String, temperature: Double, topK: Int, topP: Double, maxTokens: Int, promise: Promise) {
         scope.launch {
             try {
                 currentBackend = backendType
@@ -43,25 +40,22 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
                     "NPU" -> Backend.NPU(nativeLibraryDir = reactApplicationContext.applicationInfo.nativeLibraryDir)
                     else -> Backend.CPU()
                 }
-
                 val config = EngineConfig(
                     modelPath = modelPath,
                     backend = preferredBackend,
+                    visionBackend = Backend.GPU(), // Обязательно для обработки картинок!
                     maxNumTokens = maxTokens
                 )
+                engine?.close()
                 engine = Engine(config)
                 engine?.initialize()
                 
+                // Для Gemma4/Gemma2IT важно указать поддержку каналов если нужно
                 val convConfig = ConversationConfig(
-                    samplerConfig = SamplerConfig(
-                        topK = topK,
-                        topP = topP,
-                        temperature = temperature
-                    )
+                    samplerConfig = SamplerConfig(topK = topK, topP = topP, temperature = temperature)
                 )
                 conversation = engine?.createConversation(convConfig)
-                
-                promise.resolve("LocalGem: Model ready with $backendType")
+                promise.resolve("LocalGem: Ready")
             } catch (e: Exception) {
                 promise.reject("INIT_ERROR", e.message)
             }
@@ -69,26 +63,42 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
     }
 
     @ReactMethod
-    fun sendMessage(text: String) {
+    fun sendMessage(text: String, imagePath: String?, isThinkingEnabled: Boolean) {
         val conv = conversation ?: return
-        
         scope.launch {
             try {
-                val contents = Contents.of(listOf(Content.Text(text)))
+                val contentsList = mutableListOf<Content>()
+                
+                // Читаем картинку напрямую из файла
+                imagePath?.let {
+                    val file = File(it)
+                    if (file.exists()) {
+                        contentsList.add(Content.ImageBytes(file.readBytes()))
+                    }
+                }
+                
+                contentsList.add(Content.Text(text))
                 
                 var tokenCount = 0
                 val startTime = System.currentTimeMillis()
                 var firstTokenTime: Long = 0
 
-                conv.sendMessageAsync(contents, object : MessageCallback {
-                    override fun onMessage(message: Message) {
-                        if (tokenCount == 0) {
-                            firstTokenTime = System.currentTimeMillis() - startTime
-                        }
-                        tokenCount++
-                        sendEvent("onTokenReceived", message.toString())
-                    }
+                val extraContext = if (isThinkingEnabled) mapOf("enable_thinking" to "true") else emptyMap()
 
+                conv.sendMessageAsync(Contents.of(contentsList), object : MessageCallback {
+                    override fun onMessage(message: Message) {
+                        if (tokenCount == 0) firstTokenTime = System.currentTimeMillis() - startTime
+                        tokenCount++
+                        
+                        val textStr = message.toString()
+                        if (textStr.isNotEmpty()) sendEvent("onTokenReceived", textStr)
+                        
+                        // Пытаемся получить мысли из ВСЕХ возможных каналов (иногда они называются иначе)
+                        val thought = message.channels["thought"] ?: message.channels["thinking"] ?: message.channels["reasoning"]
+                        if (thought != null && thought.isNotEmpty()) {
+                            sendEvent("onThinkingReceived", thought)
+                        }
+                    }
                     override fun onDone() {
                         val totalTime = System.currentTimeMillis() - startTime
                         val stats = Arguments.createMap().apply {
@@ -100,13 +110,74 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
                         }
                         sendEvent("onResponseDone", stats)
                     }
-
                     override fun onError(throwable: Throwable) {
                         sendEvent("onError", throwable.message)
                     }
-                })
+                }, extraContext)
             } catch (e: Exception) {
                 sendEvent("onError", e.message)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun pickImage(promise: Promise) {
+        val activity = currentActivity ?: return promise.reject("NO_ACTIVITY", "Activity is null")
+        imagePickerPromise = promise
+        val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
+        activity.startActivityForResult(intent, 1002)
+    }
+
+    override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == 1001) {
+            if (resultCode == Activity.RESULT_OK) data?.data?.let { copyFileToAppStorage(it) }
+            else { importPromise?.reject("CANCELLED", "Cancelled"); importPromise = null }
+        } else if (requestCode == 1002) {
+            if (resultCode == Activity.RESULT_OK) data?.data?.let { processSelectedImage(it) }
+            else { imagePickerPromise?.reject("CANCELLED", "Cancelled"); imagePickerPromise = null }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {}
+
+    private fun processSelectedImage(uri: Uri) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val inputStream = reactApplicationContext.contentResolver.openInputStream(uri)
+                val originalBitmap = BitmapFactory.decodeStream(inputStream)
+                
+                if (originalBitmap == null) {
+                    imagePickerPromise?.reject("ERROR", "Failed to decode image from gallery")
+                    return@launch
+                }
+                
+                // МАСШТАБИРОВАНИЕ: Уменьшаем до 768x768 для стабильности на слабых устройствах (Note 9)
+                val maxDim = 768
+                val scale = Math.min(maxDim.toFloat() / originalBitmap.width, maxDim.toFloat() / originalBitmap.height)
+                
+                val finalBitmap = if (scale < 1.0) {
+                    Bitmap.createScaledBitmap(originalBitmap, (originalBitmap.width * scale).toInt(), (originalBitmap.height * scale).toInt(), true)
+                } else {
+                    originalBitmap
+                }
+
+                val outputStream = ByteArrayOutputStream()
+                finalBitmap.compress(Bitmap.CompressFormat.PNG, 90, outputStream)
+                
+                // Сохраняем в кэш-файл
+                val cacheDir = reactApplicationContext.cacheDir
+                val tempFile = File(cacheDir, "temp_img_${System.currentTimeMillis()}.png")
+                FileOutputStream(tempFile).use { it.write(outputStream.toByteArray()) }
+
+                val map = Arguments.createMap().apply {
+                    putString("uri", "file://${tempFile.absolutePath}")
+                    putString("filePath", tempFile.absolutePath)
+                }
+                imagePickerPromise?.resolve(map)
+            } catch (e: Exception) { 
+                imagePickerPromise?.reject("ERROR", e.message) 
+            } finally { 
+                imagePickerPromise = null 
             }
         }
     }
@@ -117,40 +188,19 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
             val map = Arguments.createMap()
             map.putString("model", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             map.putString("androidVersion", android.os.Build.VERSION.RELEASE)
-            
             val activityManager = reactApplicationContext.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             val memoryInfo = android.app.ActivityManager.MemoryInfo()
             activityManager.getMemoryInfo(memoryInfo)
             map.putDouble("totalRam", memoryInfo.totalMem.toDouble())
             map.putDouble("availRam", memoryInfo.availMem.toDouble())
-            
             map.putString("cpu", android.os.Build.HARDWARE)
             map.putInt("cores", Runtime.getRuntime().availableProcessors())
-            
             val intent = reactApplicationContext.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
             val temp = intent?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
             map.putDouble("temperature", temp.toDouble() / 10.0)
-            
-            map.putBoolean("hasNpu", android.os.Build.HARDWARE.lowercase().contains("qcom") || 
-                                    android.os.Build.HARDWARE.lowercase().contains("mt6") ||
-                                    android.os.Build.HARDWARE.lowercase().contains("exynos") ||
-                                    android.os.Build.HARDWARE.lowercase().contains("snapdragon"))
-            
+            map.putBoolean("hasNpu", android.os.Build.VERSION.SDK_INT >= 29)
             promise.resolve(map)
-        } catch (e: Exception) {
-            promise.reject("DEVICE_INFO_ERROR", e.message)
-        }
-    }
-
-    @ReactMethod
-    fun importModel(promise: Promise) {
-        val activity = currentActivity ?: return promise.reject("NO_ACTIVITY", "Activity is null")
-        importPromise = promise
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
-        }
-        activity.startActivityForResult(intent, 1001)
+        } catch (e: Exception) { promise.reject("ERROR", e.message) }
     }
 
     @ReactMethod
@@ -183,12 +233,6 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
         } catch (e: Exception) { promise.reject("DELETE_ERROR", e.message) }
     }
 
-    override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == 1001 && resultCode == Activity.RESULT_OK) {
-            data?.data?.let { copyFileToAppStorage(it) } ?: importPromise?.reject("CANCELLED", "No file")
-        } else if (requestCode == 1001) importPromise?.reject("CANCELLED", "Cancelled")
-    }
-
     private fun copyFileToAppStorage(uri: Uri) {
         scope.launch(Dispatchers.IO) {
             try {
@@ -216,8 +260,6 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
             finally { importPromise = null }
         }
     }
-
-    override fun onNewIntent(intent: Intent?) {}
 
     private fun sendEvent(eventName: String, params: Any?) {
         reactApplicationContext

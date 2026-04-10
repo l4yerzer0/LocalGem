@@ -28,15 +28,29 @@ export const SettingsScreen: React.FC = () => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>Ускоритель (Backend)</Text>
       <View style={styles.backendRow}>
-        {(['CPU', 'GPU', 'NPU'] as BackendType[]).map((type) => (
-          <TouchableOpacity 
-            key={type}
-            style={[styles.backendBtn, settings.backend === type && styles.backendBtnActive]}
-            onPress={() => handleBackendChange(type)}
-          >
-            <Text style={[styles.backendText, settings.backend === type && styles.backendTextActive]}>{type}</Text>
-          </TouchableOpacity>
-        ))}
+        {(['CPU', 'GPU', 'NPU'] as BackendType[]).map((type) => {
+          const isNpu = type === 'NPU';
+          return (
+            <TouchableOpacity 
+              key={type}
+              style={[
+                styles.backendBtn, 
+                settings.backend === type && styles.backendBtnActive,
+                isNpu && styles.backendBtnDisabled
+              ]}
+              onPress={() => !isNpu && handleBackendChange(type)}
+              disabled={isNpu}
+            >
+              <Text style={[
+                styles.backendText, 
+                settings.backend === type && styles.backendTextActive,
+                isNpu && styles.backendTextDisabled
+              ]}>
+                {type}{isNpu ? " (Скоро)" : ""}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <Text style={styles.sectionTitle}>Параметры генерации</Text>
@@ -108,6 +122,13 @@ const styles = StyleSheet.create({
   },
   backendTextActive: {
     color: colors.accent,
+  },
+  backendBtnDisabled: {
+    opacity: 0.4,
+    borderColor: '#333333',
+  },
+  backendTextDisabled: {
+    fontSize: 11,
   },
   card: {
     backgroundColor: colors.surface,

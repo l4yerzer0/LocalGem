@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { MarkdownLite } from './MarkdownLite';
 import { colors, fonts } from '../../theme/colors';
@@ -13,6 +13,8 @@ export type Role = 'user' | 'assistant';
 interface ChatMessageProps {
   role: Role;
   content: string;
+  thinking?: string;
+  image?: string;
   stats?: {
     totalTime: number;
     firstTokenTime: number;
@@ -22,13 +24,19 @@ interface ChatMessageProps {
   };
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, stats }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinking, image, stats }) => {
   const isUser = role === 'user';
   const [showFullStats, setShowFullStats] = useState(false);
+  const [showThinking, setShowThinking] = useState(false);
 
   const toggleStats = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShowFullStats(!showFullStats);
+  };
+
+  const toggleThinking = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowThinking(!showThinking);
   };
 
   const InfoBit = ({ label, value }: { label: string, value: string | number }) => (
@@ -55,10 +63,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, stats }
         
         {isUser ? (
           <View style={styles.userBubble}>
+            {image && (
+                <Image source={{ uri: image }} style={styles.messageImage} />
+            )}
             <Text style={styles.userText}>{content}</Text>
           </View>
         ) : (
           <View style={styles.assistantMessageWrapper}>
+            {thinking && thinking.length > 0 && (
+                <View style={styles.thinkingWrapper}>
+                    <TouchableOpacity onPress={toggleThinking} style={styles.thinkingHeader}>
+                        <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.text.tertiary} strokeWidth="2">
+                            <Path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </Svg>
+                        <Text style={styles.thinkingTitle}>{showThinking ? "Скрыть процесс мышления" : "Показать процесс мышления"}</Text>
+                    </TouchableOpacity>
+                    {showThinking && (
+                        <View style={styles.thinkingContent}>
+                            <Text style={styles.thinkingText}>{thinking}</Text>
+                        </View>
+                    )}
+                </View>
+            )}
+
             <MarkdownLite content={content} />
             
             {stats && (
@@ -90,119 +117,32 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, stats }
 };
 
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    width: '100%',
-  },
-  userContainer: {
-    justifyContent: 'flex-end',
-  },
-  assistantContainer: {
-    justifyContent: 'flex-start',
-    gap: 12,
-  },
-  avatarContainer: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-    flexShrink: 0,
-  },
-  assistantAvatar: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contentContainer: {
-    flex: 1,
-    paddingTop: 4,
-  },
-  userContentContainer: {
-    flex: 0,
-    maxWidth: '85%',
-    alignItems: 'flex-end',
-  },
-  name: {
-    fontSize: 13,
-    fontFamily: fonts.semiBold,
-    color: '#9ca3af',
-    marginBottom: 6,
-  },
-  userBubble: {
-    backgroundColor: '#2b2b28',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignSelf: 'flex-end',
-  },
-  userText: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontFamily: fonts.regular,
-    color: '#e5e7eb',
-  },
-  assistantMessageWrapper: {
-    alignItems: 'flex-start',
-    flex: 1,
-  },
-  assistantText: {
-    fontSize: 15,
-    lineHeight: 24,
-    fontFamily: fonts.regular,
-    color: '#d1d5db',
-  },
-  statsWrapper: {
-    marginTop: 12,
-    width: '100%',
-  },
-  statsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(217, 119, 87, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 0.5,
-    borderColor: 'rgba(217, 119, 87, 0.2)',
-  },
-  statsLabel: {
-    fontSize: 11,
-    fontFamily: fonts.semiBold,
-    color: colors.accent,
-  },
-  expandedStats: {
-    marginTop: 8,
-    backgroundColor: '#111111',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    width: '100%',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  infoBit: {
-    minWidth: '45%',
-  },
-  infoBitLabel: {
-    fontSize: 9,
-    fontFamily: fonts.semiBold,
-    color: colors.text.tertiary,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  infoBitValue: {
-    fontSize: 13,
-    fontFamily: fonts.medium,
-    color: colors.text.primary,
-  }
+  container: { paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', width: '100%' },
+  userContainer: { justifyContent: 'flex-end' },
+  assistantContainer: { justifyContent: 'flex-start', gap: 12 },
+  avatarContainer: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 },
+  assistantAvatar: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  contentContainer: { flex: 1, paddingTop: 4 },
+  userContentContainer: { flex: 0, maxWidth: '85%', alignItems: 'flex-end' },
+  name: { fontSize: 13, fontFamily: fonts.semiBold, color: '#9ca3af', marginBottom: 6 },
+  userBubble: { backgroundColor: '#2b2b28', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-end', overflow: 'hidden' },
+  userText: { fontSize: 15, lineHeight: 22, fontFamily: fonts.regular, color: '#e5e7eb' },
+  messageImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 10, resizeMode: 'cover' },
+  assistantMessageWrapper: { alignItems: 'flex-start', flex: 1 },
+  
+  // Мышление
+  thinkingWrapper: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, marginBottom: 12, width: '100%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  thinkingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
+  thinkingTitle: { fontSize: 12, fontFamily: fonts.medium, color: colors.text.tertiary },
+  thinkingContent: { paddingHorizontal: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8 },
+  thinkingText: { fontSize: 13, fontFamily: fonts.regular, color: colors.text.tertiary, fontStyle: 'italic', lineHeight: 20 },
+
+  statsWrapper: { marginTop: 12, width: '100%' },
+  statsButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(217, 119, 87, 0.08)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 0.5, borderColor: 'rgba(217, 119, 87, 0.2)' },
+  statsLabel: { fontSize: 11, fontFamily: fonts.semiBold, color: colors.accent },
+  expandedStats: { marginTop: 8, backgroundColor: '#111111', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: colors.border, width: '100%' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  infoBit: { minWidth: '45%' },
+  infoBitLabel: { fontSize: 9, fontFamily: fonts.semiBold, color: colors.text.tertiary, textTransform: 'uppercase', marginBottom: 2 },
+  infoBitValue: { fontSize: 13, fontFamily: fonts.medium, color: colors.text.primary }
 });
