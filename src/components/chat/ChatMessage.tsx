@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { MarkdownLite } from './MarkdownLite';
-import { colors, fonts } from '../../theme/colors';
+import { useTheme } from '../../theme/useTheme';
+import { fonts, colors } from '../../theme/colors';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -26,6 +27,7 @@ interface ChatMessageProps {
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinking, image, stats }) => {
   const isUser = role === 'user';
+  const theme = useTheme();
   const [showFullStats, setShowFullStats] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
 
@@ -41,8 +43,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinkin
 
   const InfoBit = ({ label, value }: { label: string, value: string | number }) => (
     <View style={styles.infoBit}>
-      <Text style={styles.infoBitLabel}>{label}</Text>
-      <Text style={styles.infoBitValue}>{value}</Text>
+      <Text style={[styles.infoBitLabel, { color: theme.text.tertiary }]}>{label}</Text>
+      <Text style={[styles.infoBitValue, { color: theme.text.primary }]}>{value}</Text>
     </View>
   );
 
@@ -51,7 +53,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinkin
       {!isUser && (
         <View style={styles.avatarContainer}>
           <View style={styles.assistantAvatar}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" color={colors.accent}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" color={theme.accent}>
               <Path d="M12 2L4.5 9.5 12 17l7.5-7.5L12 2zm0 12l-4-4 4-4 4 4-4 4z" />
             </Svg>
           </View>
@@ -59,28 +61,28 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinkin
       )}
       
       <View style={[styles.contentContainer, isUser && styles.userContentContainer]}>
-        {!isUser && <Text style={styles.name}>LocalGem</Text>}
+        {!isUser && <Text style={[styles.name, { color: theme.text.tertiary }]}>LocalGem</Text>}
         
         {isUser ? (
-          <View style={styles.userBubble}>
+          <View style={[styles.userBubble, { backgroundColor: theme.surface === '#ffffff' ? '#f0f0f0' : '#2b2b28' }]}>
             {image && (
                 <Image source={{ uri: image }} style={styles.messageImage} />
             )}
-            <Text style={styles.userText}>{content}</Text>
+            <Text style={[styles.userText, { color: theme.text.primary }]}>{content}</Text>
           </View>
         ) : (
           <View style={styles.assistantMessageWrapper}>
             {thinking && thinking.length > 0 && (
-                <View style={styles.thinkingWrapper}>
+                <View style={[styles.thinkingWrapper, { backgroundColor: 'rgba(128,128,128,0.05)', borderColor: theme.border }]}>
                     <TouchableOpacity onPress={toggleThinking} style={styles.thinkingHeader}>
-                        <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.text.tertiary} strokeWidth="2">
+                        <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.text.tertiary} strokeWidth="2">
                             <Path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </Svg>
-                        <Text style={styles.thinkingTitle}>{showThinking ? "Скрыть процесс мышления" : "Показать процесс мышления"}</Text>
+                        <Text style={[styles.thinkingTitle, { color: theme.text.tertiary }]}>{showThinking ? "Скрыть процесс мышления" : "Показать процесс мышления"}</Text>
                     </TouchableOpacity>
                     {showThinking && (
-                        <View style={styles.thinkingContent}>
-                            <Text style={styles.thinkingText}>{thinking}</Text>
+                        <View style={[styles.thinkingContent, { borderTopColor: theme.border }]}>
+                            <Text style={[styles.thinkingText, { color: theme.text.tertiary }]}>{thinking}</Text>
                         </View>
                     )}
                 </View>
@@ -90,15 +92,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinkin
             
             {stats && (
               <View style={styles.statsWrapper}>
-                <TouchableOpacity onPress={toggleStats} style={styles.statsButton}>
-                  <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth="2.5">
+                <TouchableOpacity onPress={toggleStats} style={[styles.statsButton, { backgroundColor: theme.accent + '15', borderColor: theme.accent + '30' }]}>
+                  <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.5">
                     <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                   </Svg>
-                  <Text style={styles.statsLabel}>{stats.tps.toFixed(1)} t/s</Text>
+                  <Text style={[styles.statsLabel, { color: theme.accent }]}>{stats.tps.toFixed(1)} t/s</Text>
                 </TouchableOpacity>
 
                 {showFullStats && (
-                  <View style={styles.expandedStats}>
+                  <View style={[styles.expandedStats, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                     <View style={styles.statsGrid}>
                         <InfoBit label="Ускоритель" value={stats.backend} />
                         <InfoBit label="Время" value={`${stats.totalTime.toFixed(1)}с`} />

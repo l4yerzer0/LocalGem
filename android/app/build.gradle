@@ -1,10 +1,12 @@
 apply plugin: "com.android.application"
-apply plugin: "kotlin-android"
-apply plugin: "kotlin-kapt"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
 
 android {
     namespace "com.localgem"
-    compileSdkVersion 34
+    compileSdk 34
+    buildToolsVersion "34.0.0"
+    ndkVersion "26.1.10909125"
 
     defaultConfig {
         applicationId "com.localgem"
@@ -25,6 +27,7 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += ["-Xskip-metadata-version-check"]
     }
 
     buildFeatures {
@@ -40,10 +43,10 @@ android {
 }
 
 dependencies {
-    implementation("com.facebook.react:react-android:0.74.1")
-    implementation("com.facebook.react:hermes-android:0.74.1")
+    implementation("com.facebook.react:react-android")
+    implementation("com.facebook.react:hermes-android")
     
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     
     // LiteRT LM
     implementation "com.google.ai.edge.litertlm:litertlm-android:0.10.0"

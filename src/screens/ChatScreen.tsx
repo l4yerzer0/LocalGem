@@ -10,7 +10,7 @@ import {
   Modal,
   Text,
   TouchableOpacity,
-  ImageBackground,
+  Image,
   Pressable,
   Dimensions
 } from 'react-native';
@@ -22,7 +22,8 @@ import { Sidebar } from '../components/ui/Sidebar';
 import ModelsScreen from './ModelsScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { DeviceScreen } from './DeviceScreen';
-import { colors, fonts } from '../theme/colors';
+import { useTheme } from '../theme/useTheme';
+import { fonts } from '../theme/colors';
 import { useChatStore } from '../store/chatStore';
 import { useModelStore } from '../store/modelStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -32,6 +33,7 @@ const eventEmitter = new NativeEventEmitter(LiteRtModule);
 const { width, height } = Dimensions.get('window');
 
 export const ChatScreen: React.FC = () => {
+  const theme = useTheme();
   const chats = useChatStore(state => state.chats);
   const currentChatId = useChatStore(state => state.currentChatId);
   const addChat = useChatStore(state => state.addChat);
@@ -125,8 +127,8 @@ export const ChatScreen: React.FC = () => {
   const isEmpty = !currentChat || currentChat.messages.length === 0;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.surface === '#ffffff' ? 'dark-content' : 'light-content'} backgroundColor={theme.background} />
       
       <Modal visible={isSidebarOpen} animationType="fade" transparent onRequestClose={() => setIsSidebarOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setIsSidebarOpen(false)}>
@@ -149,10 +151,10 @@ export const ChatScreen: React.FC = () => {
           {isEmpty ? (
             <View style={styles.emptyContainer}>
                 <View style={styles.emptyTitleRow}>
-                    <Svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" color={colors.accent} style={styles.emptyIcon}>
+                    <Svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" color={theme.accent} style={styles.emptyIcon}>
                         <Path d="M12 2L4.5 9.5 12 17l7.5-7.5L12 2zm0 12l-4-4 4-4 4 4-4 4z" />
                     </Svg>
-                    <Text style={styles.emptyTitle}>Добрый день, как я{"\n"}могу помочь?</Text>
+                    <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>Добрый день, как я{"\n"}могу помочь?</Text>
                 </View>
                 <ChatInput onSend={handleSend} onImagePick={handleImagePick} isCentered={true} />
             </View>
@@ -171,13 +173,14 @@ export const ChatScreen: React.FC = () => {
               <View style={styles.bottomInputContainer}>
                 {pendingImage && (
                     <View style={styles.imagePreviewContainer}>
-                        <ImageBackground source={{ uri: pendingImage.uri }} style={styles.imagePreview} imageStyle={{ borderRadius: 12 }}>
-                            <TouchableOpacity style={styles.removeImageBtn} onPress={() => setPendingImage(null)}>
-                                <Svg width="16" height="16" fill="none" stroke="white" viewBox="0 0 24 24">
-                                    <Path strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                        <View style={styles.imagePreviewWrapper}>
+                            <Image source={{ uri: pendingImage.uri }} style={styles.imagePreview} />
+                            <TouchableOpacity style={[styles.removeImageBtn, { borderColor: theme.background }]} onPress={() => setPendingImage(null)}>
+                                <Svg width="14" height="14" fill="none" stroke="white" viewBox="0 0 24 24">
+                                    <Path strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
                                 </Svg>
                             </TouchableOpacity>
-                        </ImageBackground>
+                        </View>
                     </View>
                 )}
                 <ChatInput onSend={handleSend} onImagePick={handleImagePick} isCentered={false} />
@@ -186,8 +189,8 @@ export const ChatScreen: React.FC = () => {
           )}
           
           {loadingStatus && (
-            <View style={styles.statusToast}>
-              <Text style={styles.statusText}>{loadingStatus}</Text>
+            <View style={[styles.statusToast, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.statusText, { color: theme.text.primary }]}>{loadingStatus}</Text>
             </View>
           )}
         </View>
@@ -197,7 +200,7 @@ export const ChatScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   chatWrapper: { flex: 1 },
   bottomInputContainer: { width: '100%' },
   listContent: { paddingVertical: 16, paddingBottom: 24 },
@@ -206,10 +209,11 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: '20%' },
   emptyTitleRow: { alignItems: 'center', marginBottom: 40 },
   emptyIcon: { marginBottom: 20 },
-  emptyTitle: { fontSize: 28, fontFamily: fonts.serif, color: colors.text.primary, textAlign: 'center', lineHeight: 36 },
-  statusToast: { position: 'absolute', bottom: 120, alignSelf: 'center', backgroundColor: '#2b2b2b', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: colors.border, zIndex: 100 },
-  statusText: { color: colors.text.primary, fontFamily: fonts.medium, fontSize: 13 },
-  imagePreviewContainer: { paddingHorizontal: 20, marginBottom: -8, zIndex: 40 },
-  imagePreview: { width: 80, height: 80, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-  removeImageBtn: { position: 'absolute', top: -8, right: -8, backgroundColor: '#ff4444', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.background }
+  emptyTitle: { fontSize: 28, fontFamily: fonts.serif, textAlign: 'center', lineHeight: 36 },
+  statusToast: { position: 'absolute', bottom: 120, alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1, zIndex: 100 },
+  statusText: { fontFamily: fonts.medium, fontSize: 13 },
+  imagePreviewContainer: { paddingHorizontal: 20, marginBottom: -8, zIndex: 40, flexDirection: 'row' },
+  imagePreviewWrapper: { width: 84, height: 84 },
+  imagePreview: { width: 80, height: 80, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(128,128,128,0.2)' },
+  removeImageBtn: { position: 'absolute', top: -6, right: -2, backgroundColor: '#ff4444', borderRadius: 12, width: 22, height: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 2, zIndex: 50 }
 });

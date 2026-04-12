@@ -1,191 +1,120 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, NativeModules, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, NativeModules, ActivityIndicator, Alert } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { colors, fonts } from '../theme/colors';
-import { useModelStore, AIModel } from '../store/modelStore';
+import { useModelStore } from '../store/modelStore';
+import { useTheme } from '../theme/useTheme';
+import { fonts } from '../theme/colors';
 
 const { LiteRtModule } = NativeModules;
 
 export const ModelsScreen: React.FC = () => {
-  const { models, activeModel, addModel, removeModel, setActiveModel } = useModelStore();
-  const [isImporting, setIsImporting] = useState(false);
+  const { models, activeModel, setActiveModel, setModels } = useModelStore();
+  const [loading, setLoading] = useState(false);
+  const theme = useTheme();
+
+  const loadModels = async () => {
+    setLoading(true);
+    try {
+      const installed = await LiteRtModule.getInstalledModels();
+      setModels(installed);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadModels();
+  }, []);
 
   const handleImport = async () => {
-    if (!LiteRtModule) return;
     try {
-      setIsImporting(true);
-      const newModel = await LiteRtModule.importModel();
-      if (newModel) {
-        addModel(newModel);
+      const result = await LiteRtModule.importModel();
+      if (result) {
+        Alert.alert("Успех", `Модель ${result.name} импортирована`);
+        loadModels();
       }
     } catch (e: any) {
-      if (e?.message !== 'Import cancelled' && e?.message !== 'No file selected') {
-        Alert.alert('Ошибка импорта', e?.message || 'Не удалось импортировать модель');
-      }
-    } finally {
-      setIsImporting(false);
+      if (e.code !== 'CANCELLED') Alert.alert("Ошибка", e.message);
     }
   };
 
-  const handleDelete = async (name: string) => {
-    if (!LiteRtModule) return;
-    try {
-      await LiteRtModule.deleteModel(name);
-      removeModel(name);
-    } catch (e) {
-      Alert.alert('Ошибка', 'Не удалось удалить модель');
-    }
+  const handleDelete = (fileName: string) => {
+    Alert.alert("Удаление", "Вы уверены, что хотите удалить эту модель?", [
+      { text: "Отмена", style: "cancel" },
+      { text: "Удалить", style: "destructive", onPress: async () => {
+          try {
+            await LiteRtModule.deleteModel(fileName);
+            loadModels();
+          } catch (e: any) { Alert.alert("Ошибка", e.message); }
+      }}
+    ]);
   };
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const renderItem = ({ item }: any) => {
+    const isActive = activeModel?.fileName === item.fileName;
+    return (
+      <View style={[styles.modelCard, { backgroundColor: theme.surface, borderColor: isActive ? theme.accent : theme.border }]}>
+        <View style={styles.modelInfo}>
+          <Text style={[styles.modelName, { color: theme.text.primary }]}>{item.name}</Text>
+          <Text style={[styles.modelSize, { color: theme.text.tertiary }]}>{(item.size / 1024 / 1024 / 1024).toFixed(2)} GB</Text>
+        </View>
+        <View style={styles.actions}>
+          <TouchableOpacity 
+            style={[styles.selectBtn, isActive && { backgroundColor: theme.accent }]} 
+            onPress={() => setActiveModel(item)}
+          >
+            <Text style={[styles.selectBtnText, { color: isActive ? '#ffffff' : theme.accent }]}>{isActive ? "Активна" : "Выбрать"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.fileName)}>
+            <Svg width="20" height="20" fill="none" stroke={theme.text.tertiary} viewBox="0 0 24 24">
+              <Path strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </Svg>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Управление моделями</Text>
-
-      <TouchableOpacity 
-        style={styles.importButton} 
-        onPress={handleImport}
-        disabled={isImporting}
-      >
-        {isImporting ? (
-          <ActivityIndicator color={colors.background} size="small" />
-        ) : (
-          <>
-            <Svg width="20" height="20" fill="none" stroke={colors.background} viewBox="0 0 24 24">
-              <Path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </Svg>
-            <Text style={styles.importText}>Импортировать модель</Text>
-          </>
-        )}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <TouchableOpacity style={[styles.importBtn, { backgroundColor: theme.accent }]} onPress={handleImport}>
+        <Svg width="20" height="20" fill="none" stroke="#ffffff" viewBox="0 0 24 24">
+          <Path strokeWidth="2.5" d="M12 4v12m0 0l-4-4m4 4l4-4M4 17v1a2 2 0 002 2h12a2 2 0 002-2v-1" />
+        </Svg>
+        <Text style={styles.importBtnText}>Импортировать .litertlm</Text>
       </TouchableOpacity>
 
       <FlatList
         data={models}
-        keyExtractor={(item) => item.path}
-        contentContainerStyle={styles.listContent}
+        keyExtractor={(item) => item.fileName}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        refreshing={loading}
+        onRefresh={loadModels}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Нет установленных моделей. Импортируйте .litertlm файл для начала работы.</Text>
+          <Text style={[styles.empty, { color: theme.text.tertiary }]}>Нет установленных моделей.{"\n"}Импортируйте файл .litertlm</Text>
         }
-        renderItem={({ item }) => {
-          const isActive = activeModel?.name === item.name;
-          return (
-            <TouchableOpacity 
-              style={[styles.modelCard, isActive && styles.activeModelCard]}
-              onPress={() => setActiveModel(item)}
-            >
-              <View style={styles.modelInfo}>
-                <View style={styles.modelHeader}>
-                  <Text style={styles.modelName} numberOfLines={1}>{item.name}</Text>
-                  {isActive && <Text style={styles.activeTag}>АКТИВНА</Text>}
-                </View>
-                <Text style={styles.modelDetails}>
-                  Размер: {formatBytes(item.size)} • Локальный запуск
-                </Text>
-              </View>
-
-              <TouchableOpacity onPress={() => handleDelete(item.name)} style={styles.deleteButton}>
-                <Svg width="20" height="20" fill="none" stroke={colors.accent} viewBox="0 0 24 24">
-                  <Path strokeWidth="1.5" strokeLinecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </Svg>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        }}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: colors.background,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: fonts.serif,
-    color: colors.text.primary,
-    marginBottom: 24,
-  },
-  importButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#e6e6e6',
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginBottom: 32,
-  },
-  importText: {
-    fontFamily: fonts.semiBold,
-    fontSize: 16,
-    color: colors.background,
-  },
-  listContent: {
-    gap: 16,
-  },
-  modelCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
-    borderRadius: 16,
-  },
-  activeModelCard: {
-    borderColor: colors.text.tertiary,
-  },
-  modelInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  modelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 6,
-  },
-  modelName: {
-    fontFamily: fonts.semiBold,
-    fontSize: 16,
-    color: colors.text.primary,
-    flexShrink: 1,
-  },
-  activeTag: {
-    fontFamily: fonts.semiBold,
-    fontSize: 10,
-    color: '#10b981', // green-500
-    letterSpacing: 0.5,
-  },
-  modelDetails: {
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    color: colors.text.tertiary,
-  },
-  deleteButton: {
-    padding: 8,
-    backgroundColor: 'rgba(217, 119, 87, 0.1)',
-    borderRadius: 8,
-  },
-  emptyText: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.text.tertiary,
-    textAlign: 'center',
-    marginTop: 40,
-    lineHeight: 22,
-  }
+  container: { flex: 1 },
+  list: { padding: 20 },
+  importBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, margin: 20, padding: 16, borderRadius: 12 },
+  importBtnText: { color: '#ffffff', fontSize: 15, fontFamily: fonts.semiBold },
+  modelCard: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modelInfo: { flex: 1 },
+  modelName: { fontSize: 16, fontFamily: fonts.medium, marginBottom: 4 },
+  modelSize: { fontSize: 12, fontFamily: fonts.regular },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  selectBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'transparent' },
+  selectBtnText: { fontSize: 13, fontFamily: fonts.semiBold },
+  deleteBtn: { padding: 4 },
+  empty: { textAlign: 'center', marginTop: 100, fontSize: 14, fontFamily: fonts.regular, lineHeight: 22 }
 });
 
 export default ModelsScreen;
