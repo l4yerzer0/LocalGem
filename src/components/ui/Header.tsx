@@ -22,8 +22,8 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <TouchableOpacity onPress={onMenuPress} style={styles.menuButton}>
-        <Svg width="24" height="24" fill="none" stroke={theme.text.tertiary} viewBox="0 0 24 24">
-          <Path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+        <Svg width="22" height="22" fill="none" stroke={theme.text.tertiary} viewBox="0 0 24 24">
+          <Path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h10M4 18h16" />
         </Svg>
       </TouchableOpacity>
       

@@ -26,13 +26,12 @@ export const lightTheme = {
   codeBg: '#f3f4f6',     
 };
 
-// Для обратной совместимости со статическими стилями (StyleSheet.create)
 export const colors = darkTheme;
 
 export const fonts = {
-  regular: 'Inter-Regular',
-  medium: 'Inter-Medium',
-  semiBold: 'Inter-SemiBold',
-  serif: 'Lora-Regular',
-  serifMedium: 'Lora-Medium',
+  regular: 'lora_regular', // Используем lora как основной для тестов
+  medium: 'lora_medium',
+  semiBold: 'lora_medium',
+  serif: 'lora_regular',
+  serifMedium: 'lora_medium',
 };

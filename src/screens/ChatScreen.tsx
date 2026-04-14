@@ -14,7 +14,9 @@ import {
   Pressable,
   Dimensions,
   ScrollView,
-  Platform
+  Platform,
+  Animated,
+  KeyboardAvoidingView
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Slider from '@react-native-community/slider';
@@ -57,6 +59,9 @@ export const ChatScreen: React.FC = () => {
   
   const flatListRef = useRef<FlatList>(null);
   const currentAssistantMsg = useRef("");
+  
+  // Анимация сайдбара
+  const sidebarAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (chats.length === 0) addChat("New Chat");
@@ -87,6 +92,23 @@ export const ChatScreen: React.FC = () => {
     });
     return () => { tokenSub.remove(); thinkingSub.remove(); doneSub.remove(); };
   }, [currentChatId]);
+
+  const openSidebar = () => {
+    setIsSidebarOpen(true);
+    Animated.timing(sidebarAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeSidebar = () => {
+    Animated.timing(sidebarAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setIsSidebarOpen(false));
+  };
 
   const handleImagePick = async () => {
     try {
@@ -147,6 +169,16 @@ export const ChatScreen: React.FC = () => {
     </View>
   );
 
+  const sidebarTranslateX = sidebarAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-280, 0]
+  });
+
+  const overlayOpacity = sidebarAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1]
+  });
+
   const isEmpty = !currentChat || currentChat.messages.length === 0;
 
   return (
@@ -157,18 +189,23 @@ export const ChatScreen: React.FC = () => {
         translucent={true} 
       />
       
-      {/* Сайдбар - ИСПРАВЛЕНО: statusBarTranslucent убирает белую полосу */}
+      {/* Сайдбар */}
       <Modal 
         visible={isSidebarOpen} 
-        animationType="fade" 
+        animationType="none" 
         transparent 
         statusBarTranslucent={true}
-        onRequestClose={() => setIsSidebarOpen(false)}
+        onRequestClose={closeSidebar}
       >
         <StatusBar backgroundColor="transparent" translucent={true} barStyle={theme.surface === '#ffffff' ? 'dark-content' : 'light-content'} />
         <View style={styles.sidebarOverlay}>
-          <Sidebar onClose={() => setIsSidebarOpen(false)} />
-          <TouchableOpacity style={styles.closeOverlay} activeOpacity={1} onPress={() => setIsSidebarOpen(false)} />
+          <Animated.View style={[styles.sidebarOverlayInner, { opacity: overlayOpacity }]}>
+            <TouchableOpacity style={styles.closeOverlay} activeOpacity={1} onPress={closeSidebar} />
+          </Animated.View>
+          
+          <Animated.View style={[styles.animatedSidebar, { transform: [{ translateX: sidebarTranslateX }] }]}>
+            <Sidebar onClose={closeSidebar} />
+          </Animated.View>
         </View>
       </Modal>
 
@@ -201,7 +238,7 @@ export const ChatScreen: React.FC = () => {
       </Modal>
 
       <Header 
-        onMenuPress={() => setIsSidebarOpen(true)} 
+        onMenuPress={openSidebar} 
         onSettingsPress={() => setIsChatSettingsOpen(true)}
         showSettings={activeView === 'chat'}
         title={activeView === 'models' ? 'Модели' : activeView === 'settings' ? 'Настройки' : activeView === 'device' ? 'Устройство' : (isEmpty ? "" : currentChat?.title || "LocalGem")}
@@ -210,53 +247,59 @@ export const ChatScreen: React.FC = () => {
       {activeView === 'models' ? <ModelsScreen /> : 
        activeView === 'settings' ? <SettingsScreen /> : 
        activeView === 'device' ? <DeviceScreen /> : (
-        <View style={styles.chatWrapper}>
-          {isEmpty ? (
-            <View style={styles.emptyContainer}>
-                <View style={styles.emptyTitleRow}>
-                    <Svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" color={theme.accent} style={styles.emptyIcon}>
-                        <Path d="M12 2L4.5 9.5 12 17l7.5-7.5L12 2zm0 12l-4-4 4-4 4 4-4 4z" />
-                    </Svg>
-                    <Text style={[styles.emptyTitle, { color: theme.text.primary }]} allowFontScaling={false}>Добрый день, как я{"\n"}могу помочь?</Text>
-                </View>
-                <ChatInput onSend={handleSend} onImagePick={handleImagePick} isCentered={true} />
-            </View>
-          ) : (
-            <>
-              <FlatList
-                ref={flatListRef}
-                data={currentChat?.messages || []}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <ChatMessage role={item.role} content={item.content} thinking={item.thinking} image={item.image} stats={item.stats} />
-                )}
-                contentContainerStyle={styles.listContent}
-                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-              />
-              <View style={styles.bottomInputContainer}>
-                {pendingImage && (
-                    <View style={styles.imagePreviewContainer}>
-                        <View style={styles.imagePreviewWrapper}>
-                            <Image source={{ uri: pendingImage.uri }} style={styles.imagePreview} />
-                            <TouchableOpacity style={[styles.removeImageBtn, { borderColor: theme.background }]} onPress={() => setPendingImage(null)}>
-                                <Svg width="14" height="14" fill="none" stroke="white" viewBox="0 0 24 24">
-                                    <Path strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
-                                </Svg>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-                <ChatInput onSend={handleSend} onImagePick={handleImagePick} isCentered={false} />
+        <KeyboardAvoidingView 
+          style={{flex: 1}} 
+          behavior={Platform.OS === 'android' ? 'height' : 'padding'}
+          keyboardVerticalOffset={Platform.OS === 'android' ? -100 : 0}
+        >
+          <View style={styles.chatWrapper}>
+            {isEmpty ? (
+              <View style={styles.emptyContainer}>
+                  <View style={styles.emptyTitleRow}>
+                      <Svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" color={theme.accent} style={styles.emptyIcon}>
+                          <Path d="M12 2L4.5 9.5 12 17l7.5-7.5L12 2zm0 12l-4-4 4-4 4 4-4 4z" />
+                      </Svg>
+                      <Text style={[styles.emptyTitle, { color: theme.text.primary }]} allowFontScaling={false}>Добрый день, как я{"\n"}могу помочь?</Text>
+                  </View>
+                  <ChatInput onSend={handleSend} onImagePick={handleImagePick} isCentered={true} />
               </View>
-            </>
-          )}
-          
-          {loadingStatus && (
-            <View style={[styles.statusToast, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.statusText, { color: theme.text.primary }]}>{loadingStatus}</Text>
-            </View>
-          )}
-        </View>
+            ) : (
+              <>
+                <FlatList
+                  ref={flatListRef}
+                  data={currentChat?.messages || []}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <ChatMessage role={item.role} content={item.content} thinking={item.thinking} image={item.image} stats={item.stats} />
+                  )}
+                  contentContainerStyle={styles.listContent}
+                  onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                />
+                <View style={styles.bottomInputContainer}>
+                  {pendingImage && (
+                      <View style={styles.imagePreviewContainer}>
+                          <View style={styles.imagePreviewWrapper}>
+                              <Image source={{ uri: pendingImage.uri }} style={styles.imagePreview} />
+                              <TouchableOpacity style={[styles.removeImageBtn, { borderColor: theme.background }]} onPress={() => setPendingImage(null)}>
+                                  <Svg width="14" height="14" fill="none" stroke="white" viewBox="0 0 24 24">
+                                      <Path strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                                  </Svg>
+                              </TouchableOpacity>
+                          </View>
+                      </View>
+                  )}
+                  <ChatInput onSend={handleSend} onImagePick={handleImagePick} isCentered={false} />
+                </View>
+              </>
+            )}
+            
+            {loadingStatus && (
+              <View style={[styles.statusToast, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <Text style={[styles.statusText, { color: theme.text.primary }]}>{loadingStatus}</Text>
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
       )}
     </View>
   );
@@ -270,13 +313,21 @@ const styles = StyleSheet.create({
   
   // Оверлеи
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  sidebarOverlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.6)' },
-  closeOverlay: { flex: 1 },
+  sidebarOverlay: { flex: 1, flexDirection: 'row' },
+  sidebarOverlayInner: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  animatedSidebar: { width: 280, height: '100%', elevation: 16, zIndex: 100 },
+  closeOverlay: { flex: 1, height: '100%' },
   
   emptyContainer: { flex: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: '18%' },
   emptyTitleRow: { alignItems: 'center', marginBottom: 60 },
   emptyIcon: { marginBottom: 30 },
-  emptyTitle: { fontSize: 44, fontFamily: Platform.OS === 'android' ? 'serif' : fonts.serifMedium, fontWeight: 'normal', textAlign: 'center', lineHeight: 52, letterSpacing: -1.5 },
+  emptyTitle: { 
+    fontSize: 44, 
+    fontFamily: Platform.OS === 'android' ? 'serif' : fonts.serifMedium, 
+    textAlign: 'center', 
+    lineHeight: 52, 
+    letterSpacing: -1.5 
+  },
   statusToast: { position: 'absolute', bottom: 120, alignSelf: 'center', paddingHorizontal: 22, paddingVertical: 12, borderRadius: 24, borderWidth: 1, zIndex: 100 },
   statusText: { fontFamily: fonts.medium, fontSize: 13 },
   imagePreviewContainer: { paddingHorizontal: 20, marginBottom: -8, zIndex: 40, flexDirection: 'row' },
