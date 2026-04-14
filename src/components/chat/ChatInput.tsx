@@ -52,6 +52,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onImagePick, isCen
             value={text}
             onChangeText={setText}
             multiline
+            numberOfLines={isCentered ? 3 : 2}
             maxHeight={120}
           />
           
@@ -71,9 +72,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onImagePick, isCen
             </View>
             
             <View style={styles.rightActions}>
-              <TouchableOpacity style={[styles.modelPickerBtn, { backgroundColor: theme.surface === '#ffffff' ? '#f9fafb' : '#111111', borderColor: theme.border }]}>
-                <Text style={[styles.modelPickerText, { color: theme.text.tertiary }]} numberOfLines={1}>{activeModel ? activeModel.name : "Нет модели"}</Text>
-                <Svg width="12" height="12" fill="none" stroke={theme.text.tertiary} viewBox="0 0 24 24">
+              <TouchableOpacity style={styles.modelPickerBtn}>
+                <Text style={[styles.modelPickerText, { color: theme.text.secondary }]} numberOfLines={1}>{activeModel ? activeModel.name : "Нет модели"}</Text>
+                <Svg width="12" height="12" fill="none" stroke={theme.text.secondary} viewBox="0 0 24 24">
                   <Path strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </Svg>
               </TouchableOpacity>
@@ -119,24 +120,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onImagePick, isCen
 
 const styles = StyleSheet.create({
   bottomContainer: { padding: 16, borderTopWidth: 1 },
-  centeredContainer: { width: '100%', maxWidth: 540, marginTop: 40, paddingHorizontal: 16 },
-  inputWrapper: { borderRadius: 28, borderWidth: 1, padding: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 15, elevation: 10 },
-  input: { fontFamily: fonts.regular, fontSize: 16, minHeight: 36, paddingHorizontal: 16, paddingVertical: 8, textAlignVertical: 'top' },
-  inputCenteredText: { fontSize: 17, minHeight: 44 },
-  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4, paddingBottom: 4 },
-  leftActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  rightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconButton: { padding: 8 },
-  modelPickerBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 4, maxWidth: 120 },
-  modelPickerText: { fontSize: 12, fontFamily: fonts.semiBold },
-  sendButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  centeredContainer: { width: '100%', paddingHorizontal: 20 },
+  inputWrapper: { borderRadius: 26, borderWidth: 1, padding: 16, paddingBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 20 },
+  input: { fontFamily: fonts.regular, fontSize: 16, paddingHorizontal: 0, paddingVertical: 0, textAlignVertical: 'top', minHeight: 40 },
+  inputCenteredText: { fontSize: 19, minHeight: 50 },
+  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 0, paddingTop: 8 },
+  leftActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rightActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconButton: { padding: 8, borderRadius: 8 },
+  modelPickerBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, gap: 4 },
+  modelPickerText: { fontSize: 13, fontFamily: fonts.regular },
+  sendButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' },
-  menuContainer: { position: 'absolute', borderRadius: 20, padding: 8, width: 220, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+  menuContainer: { position: 'absolute', borderRadius: 20, padding: 10, width: 220, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 24, elevation: 25 },
   menuBottom: { left: 24, bottom: 90 },
   menuCentered: { left: 32, top: '55%' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14 },
   actionBtnDisabled: { opacity: 0.4 },
-  actionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  actionIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   actionLabel: { fontSize: 14, fontFamily: fonts.medium },
 });

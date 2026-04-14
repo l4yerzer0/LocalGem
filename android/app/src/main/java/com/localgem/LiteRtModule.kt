@@ -188,16 +188,34 @@ class LiteRtModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
             val map = Arguments.createMap()
             map.putString("model", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             map.putString("androidVersion", android.os.Build.VERSION.RELEASE)
+            
+            // ОЗУ
             val activityManager = reactApplicationContext.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             val memoryInfo = android.app.ActivityManager.MemoryInfo()
             activityManager.getMemoryInfo(memoryInfo)
             map.putDouble("totalRam", memoryInfo.totalMem.toDouble())
             map.putDouble("availRam", memoryInfo.availMem.toDouble())
+            
+            // CPU
             map.putString("cpu", android.os.Build.HARDWARE)
             map.putInt("cores", Runtime.getRuntime().availableProcessors())
+            
+            // GPU (через рефлексию, так как SystemProperties скрыт)
+            var gpuModel = "Unknown GPU"
+            try {
+                val systemPropertiesClass = Class.forName("android.os.SystemProperties")
+                val getMethod = systemPropertiesClass.getMethod("get", String::class.java, String::class.java)
+                gpuModel = getMethod.invoke(null, "ro.hardware.egl", "Unknown GPU") as String
+            } catch (e: Exception) {
+                // Если не удалось получить через свойства, оставляем заглушку
+            }
+            map.putString("gpu", gpuModel)
+            
+            // Температура
             val intent = reactApplicationContext.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
             val temp = intent?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
             map.putDouble("temperature", temp.toDouble() / 10.0)
+            
             map.putBoolean("hasNpu", android.os.Build.VERSION.SDK_INT >= 29)
             promise.resolve(map)
         } catch (e: Exception) { promise.reject("ERROR", e.message) }

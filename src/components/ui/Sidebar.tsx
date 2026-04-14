@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Platform } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useChatStore } from '../../store/chatStore';
 import { useSettingsStore, ThemeMode } from '../../store/settingsStore';
@@ -13,7 +13,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const chats = useChatStore(state => state.chats);
   const currentChatId = useChatStore(state => state.currentChatId);
-  const setCurrentChatId = useChatStore(state => state.setCurrentChatId);
+  const setCurrentChat = useChatStore(state => state.setCurrentChat);
   const addChat = useChatStore(state => state.addChat);
   const setActiveView = useChatStore(state => state.setActiveView);
   
@@ -27,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   };
 
   const handleSelectChat = (id: string) => {
-    setCurrentChatId(id);
+    setCurrentChat(id);
     setActiveView('chat');
     onClose();
   };
@@ -42,24 +42,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     </TouchableOpacity>
   );
 
-  const ThemeBtn = ({ mode, label, icon }: { mode: ThemeMode, label: string, icon: any }) => (
-    <TouchableOpacity 
-      style={[
-        styles.themeBtn, 
-        themeMode === mode && { backgroundColor: theme.accent, borderColor: theme.accent }
-      ]} 
-      onPress={() => setThemeMode(mode)}
-    >
-      {icon}
-      <Text style={[
-        styles.themeBtnText, 
-        { color: themeMode === mode ? '#ffffff' : theme.text.tertiary }
-      ]}>{label}</Text>
-    </TouchableOpacity>
-  );
+  const ThemeToggle = () => {
+    const isDark = themeMode === 'dark';
+    const isLight = themeMode === 'light';
+    
+    return (
+      <View style={styles.themeToggleContainer}>
+        <View style={[styles.themeToggle, { backgroundColor: theme.surface === '#ffffff' ? '#f3f4f6' : '#2b2b2b', borderColor: theme.border }]}>
+          <TouchableOpacity 
+            style={[
+              styles.themeOption,
+              isLight && { backgroundColor: theme.surface === '#ffffff' ? '#ffffff' : theme.accent }
+            ]}
+            onPress={() => setThemeMode('light')}
+          >
+            <Svg width="16" height="16" fill="none" stroke={isLight ? (theme.surface === '#ffffff' ? '#1a1a1a' : '#ffffff') : theme.text.tertiary} viewBox="0 0 24 24">
+              <Path strokeWidth="2" strokeLinecap="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+            </Svg>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[
+              styles.themeOption,
+              isDark && { backgroundColor: theme.surface === '#ffffff' ? '#1a1a1a' : theme.accent }
+            ]}
+            onPress={() => setThemeMode('dark')}
+          >
+            <Svg width="16" height="16" fill="none" stroke={isDark ? '#ffffff' : theme.text.tertiary} viewBox="0 0 24 24">
+              <Path strokeWidth="2" strokeLinecap="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </Svg>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 0 }]}>
       <View style={styles.header}>
         <TouchableOpacity style={[styles.newChatBtn, { borderColor: theme.border }]} onPress={handleNewChat}>
           <Svg width="20" height="20" fill="none" stroke={theme.text.primary} viewBox="0 0 24 24">
@@ -87,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         ))}
       </ScrollView>
 
-      <View style={[styles.footer, { borderTopColor: theme.border }]}>
+      <View style={styles.footer}>
         <NavItem 
           label="Модели" 
           view="models"
@@ -104,37 +122,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           icon={<Svg width="20" height="20" fill="none" stroke={theme.text.tertiary} viewBox="0 0 24 24"><Path strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><Path strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></Svg>} 
         />
 
-        <View style={styles.themeRow}>
-          <ThemeBtn 
-            mode="light" 
-            label="Светлая" 
-            icon={<Svg width="14" height="14" fill="none" stroke={themeMode === 'light' ? 'white' : theme.text.tertiary} viewBox="0 0 24 24"><Path strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></Svg>}
-          />
-          <ThemeBtn 
-            mode="dark" 
-            label="Темная" 
-            icon={<Svg width="14" height="14" fill="none" stroke={themeMode === 'dark' ? 'white' : theme.text.tertiary} viewBox="0 0 24 24"><Path strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></Svg>}
-          />
-        </View>
+        <ThemeToggle />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, width: 280 },
   header: { padding: 16 },
-  newChatBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1 },
+  newChatBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
   newChatLabel: { fontSize: 15, fontFamily: fonts.medium },
   history: { flex: 1, paddingHorizontal: 12 },
-  sectionTitle: { fontSize: 12, fontFamily: fonts.semiBold, textTransform: 'uppercase', marginBottom: 8, paddingHorizontal: 4 },
-  chatItem: { padding: 12, borderRadius: 8, marginBottom: 4 },
+  sectionTitle: { fontSize: 11, fontFamily: fonts.semiBold, textTransform: 'uppercase', marginBottom: 10, paddingHorizontal: 8, letterSpacing: 0.5 },
+  chatItem: { padding: 12, borderRadius: 10, marginBottom: 4 },
   chatTitle: { fontSize: 14, fontFamily: fonts.regular },
-  footer: { padding: 16, borderTopWidth: 1 },
-  navItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  footer: { padding: 16 },
+  navItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 4 },
   navIcon: { width: 24, alignItems: 'center' },
   navLabel: { fontSize: 14, fontFamily: fonts.medium },
-  themeRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  themeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: 'transparent', backgroundColor: 'rgba(128,128,128,0.05)' },
-  themeBtnText: { fontSize: 11, fontFamily: fonts.medium }
+  themeToggleContainer: { marginTop: 16, alignItems: 'center' },
+  themeToggle: { flexDirection: 'row', padding: 3, borderRadius: 10, borderWidth: 1, gap: 3, width: 100 },
+  themeOption: { flex: 1, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }
 });

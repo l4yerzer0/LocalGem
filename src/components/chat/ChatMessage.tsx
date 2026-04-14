@@ -119,32 +119,32 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinkin
 };
 
 const styles = StyleSheet.create({
-  container: { paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', width: '100%' },
+  container: { paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', width: '100%' },
   userContainer: { justifyContent: 'flex-end' },
   assistantContainer: { justifyContent: 'flex-start', gap: 12 },
-  avatarContainer: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 },
+  avatarContainer: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginTop: 4, flexShrink: 0 },
   assistantAvatar: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   contentContainer: { flex: 1, paddingTop: 4 },
   userContentContainer: { flex: 0, maxWidth: '85%', alignItems: 'flex-end' },
-  name: { fontSize: 13, fontFamily: fonts.semiBold, color: '#9ca3af', marginBottom: 6 },
-  userBubble: { backgroundColor: '#2b2b28', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-end', overflow: 'hidden' },
-  userText: { fontSize: 15, lineHeight: 22, fontFamily: fonts.regular, color: '#e5e7eb' },
-  messageImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 10, resizeMode: 'cover' },
+  name: { fontSize: 13, fontFamily: fonts.semiBold, color: '#9ca3af', marginBottom: 8 },
+  userBubble: { backgroundColor: '#2b2b28', borderRadius: 22, paddingHorizontal: 18, paddingVertical: 12, alignSelf: 'flex-end', overflow: 'hidden' },
+  userText: { fontSize: 15, lineHeight: 23, fontFamily: fonts.regular, color: '#e5e7eb' },
+  messageImage: { width: 200, height: 200, borderRadius: 14, marginBottom: 10, resizeMode: 'cover' },
   assistantMessageWrapper: { alignItems: 'flex-start', flex: 1 },
   
   // Мышление
-  thinkingWrapper: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, marginBottom: 12, width: '100%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  thinkingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
+  thinkingWrapper: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 14, marginBottom: 14, width: '100%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  thinkingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14 },
   thinkingTitle: { fontSize: 12, fontFamily: fonts.medium, color: colors.text.tertiary },
-  thinkingContent: { paddingHorizontal: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8 },
-  thinkingText: { fontSize: 13, fontFamily: fonts.regular, color: colors.text.tertiary, fontStyle: 'italic', lineHeight: 20 },
+  thinkingContent: { paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 10 },
+  thinkingText: { fontSize: 13, fontFamily: fonts.regular, color: colors.text.tertiary, fontStyle: 'italic', lineHeight: 21 },
 
-  statsWrapper: { marginTop: 12, width: '100%' },
-  statsButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(217, 119, 87, 0.08)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 0.5, borderColor: 'rgba(217, 119, 87, 0.2)' },
+  statsWrapper: { marginTop: 14, width: '100%' },
+  statsButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(217, 119, 87, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 0.5, borderColor: 'rgba(217, 119, 87, 0.25)' },
   statsLabel: { fontSize: 11, fontFamily: fonts.semiBold, color: colors.accent },
-  expandedStats: { marginTop: 8, backgroundColor: '#111111', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: colors.border, width: '100%' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  expandedStats: { marginTop: 10, backgroundColor: '#111111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.border, width: '100%' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 14 },
   infoBit: { minWidth: '45%' },
-  infoBitLabel: { fontSize: 9, fontFamily: fonts.semiBold, color: colors.text.tertiary, textTransform: 'uppercase', marginBottom: 2 },
-  infoBitValue: { fontSize: 13, fontFamily: fonts.medium, color: colors.text.primary }
+  infoBitLabel: { fontSize: 10, fontFamily: fonts.semiBold, color: colors.text.tertiary, textTransform: 'uppercase', marginBottom: 3, letterSpacing: 0.5 },
+  infoBitValue: { fontSize: 14, fontFamily: fonts.medium, color: colors.text.primary }
 });

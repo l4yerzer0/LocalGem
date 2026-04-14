@@ -1,0 +1,25 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "android/app/src/main/assets/fonts/Inter-Medium.ttf",
+      "sha1": "295bc033e331661df775c5d9958ef0ac3ca5ba05"
+    },
+    {
+      "path": "android/app/src/main/assets/fonts/Inter-Regular.ttf",
+      "sha1": "04c2d62b69686ff90c6efd9c018f0b6d51f86754"
+    },
+    {
+      "path": "android/app/src/main/assets/fonts/Inter-SemiBold.ttf",
+      "sha1": "84014c379e2e6514ec970f96a0aca6ef408a29ac"
+    },
+    {
+      "path": "android/app/src/main/assets/fonts/Lora-Medium.ttf",
+      "sha1": "7e3e22f2d476ff44167f89046ff947a0da880c90"
+    },
+    {
+      "path": "android/app/src/main/assets/fonts/Lora-Regular.ttf",
+      "sha1": "fde07e87d9e4e27c87e7ddb03e2a0e69ec2209e6"
+    }
+  ]
+}

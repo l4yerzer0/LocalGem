@@ -104,17 +104,17 @@ export const ModelsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: 20 },
-  importBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, margin: 20, padding: 16, borderRadius: 12 },
+  importBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, margin: 20, padding: 18, borderRadius: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
   importBtnText: { color: '#ffffff', fontSize: 15, fontFamily: fonts.semiBold },
-  modelCard: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modelCard: { borderRadius: 18, padding: 18, marginBottom: 14, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   modelInfo: { flex: 1 },
-  modelName: { fontSize: 16, fontFamily: fonts.medium, marginBottom: 4 },
+  modelName: { fontSize: 16, fontFamily: fonts.medium, marginBottom: 6 },
   modelSize: { fontSize: 12, fontFamily: fonts.regular },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  selectBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'transparent' },
+  selectBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
   selectBtnText: { fontSize: 13, fontFamily: fonts.semiBold },
-  deleteBtn: { padding: 4 },
-  empty: { textAlign: 'center', marginTop: 100, fontSize: 14, fontFamily: fonts.regular, lineHeight: 22 }
+  deleteBtn: { padding: 6, borderRadius: 8 },
+  empty: { textAlign: 'center', marginTop: 100, fontSize: 14, fontFamily: fonts.regular, lineHeight: 24 }
 });
 
 export default ModelsScreen;

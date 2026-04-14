@@ -20,7 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   const theme = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <TouchableOpacity onPress={onMenuPress} style={styles.menuButton}>
         <Svg width="24" height="24" fill="none" stroke={theme.text.tertiary} viewBox="0 0 24 24">
           <Path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -50,13 +50,11 @@ const styles = StyleSheet.create({
   container: {
     height: Platform.OS === 'ios' ? 100 : 64,
     paddingTop: Platform.OS === 'ios' ? 40 : 0,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     zIndex: 40,
   },
   menuButton: {
@@ -64,6 +62,7 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 10,
   },
   titleContainer: {
     flex: 1,
@@ -72,7 +71,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   title: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: fonts.medium,
     color: '#d1d5db',
     textAlign: 'center',
@@ -87,6 +86,7 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 10,
   },
   settingsPlaceholder: {
     width: 40,

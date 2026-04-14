@@ -103,17 +103,17 @@ export const MarkdownLite: React.FC<MarkdownProps> = ({ content }) => {
 
 const styles = StyleSheet.create({
   container: { width: '100%' },
-  text: { fontSize: 15, lineHeight: 24, fontFamily: fonts.regular, marginBottom: 4 },
+  text: { fontSize: 16, lineHeight: 26, fontFamily: fonts.regular, marginBottom: 6 },
   bold: { fontFamily: fonts.semiBold },
   italic: { fontStyle: 'italic' },
-  h: { fontFamily: fonts.serifMedium, marginTop: 16, marginBottom: 8 },
-  quote: { borderLeftWidth: 3, paddingLeft: 16, marginVertical: 8 },
-  codeBlock: { borderRadius: 12, marginVertical: 12, borderWidth: 1, overflow: 'hidden' },
-  codeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
-  codeLang: { fontSize: 11, fontFamily: fonts.semiBold, textTransform: 'uppercase' },
+  h: { fontFamily: fonts.serifMedium, marginTop: 18, marginBottom: 10 },
+  quote: { borderLeftWidth: 3, paddingLeft: 16, marginVertical: 10 },
+  codeBlock: { borderRadius: 14, marginVertical: 14, borderWidth: 1, overflow: 'hidden' },
+  codeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1 },
+  codeLang: { fontSize: 11, fontFamily: fonts.semiBold, textTransform: 'uppercase', letterSpacing: 0.5 },
   copyBtn: { padding: 4 },
-  copyText: { fontSize: 10, fontFamily: fonts.semiBold },
-  codeText: { fontFamily: 'monospace', fontSize: 13, padding: 12, lineHeight: 20 },
-  inlineCode: { paddingHorizontal: 4, borderRadius: 4, fontFamily: 'monospace', fontSize: 14 },
+  copyText: { fontSize: 10, fontFamily: fonts.semiBold, letterSpacing: 0.5 },
+  codeText: { fontFamily: 'monospace', fontSize: 13, padding: 14, lineHeight: 21 },
+  inlineCode: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, fontFamily: 'monospace', fontSize: 14 },
   latex: { fontFamily: fonts.serifMedium, fontStyle: 'italic' }
 });

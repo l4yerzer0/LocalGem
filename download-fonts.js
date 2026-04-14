@@ -19,11 +19,11 @@ const download = (url, dest) => {
 };
 
 const fonts = [
-  ['https://raw.githubusercontent.com/google/fonts/main/ofl/inter/static/Inter-Regular.ttf', 'Inter-Regular.ttf'],
-  ['https://raw.githubusercontent.com/google/fonts/main/ofl/inter/static/Inter-Medium.ttf', 'Inter-Medium.ttf'],
-  ['https://raw.githubusercontent.com/google/fonts/main/ofl/inter/static/Inter-SemiBold.ttf', 'Inter-SemiBold.ttf'],
-  ['https://raw.githubusercontent.com/google/fonts/main/ofl/lora/static/Lora-Regular.ttf', 'Lora-Regular.ttf'],
-  ['https://raw.githubusercontent.com/google/fonts/main/ofl/lora/static/Lora-Medium.ttf', 'Lora-Medium.ttf']
+  ['https://github.com/google/fonts/raw/main/ofl/inter/static/Inter-Regular.ttf', 'Inter-Regular.ttf'],
+  ['https://github.com/google/fonts/raw/main/ofl/inter/static/Inter-Medium.ttf', 'Inter-Medium.ttf'],
+  ['https://github.com/google/fonts/raw/main/ofl/inter/static/Inter-SemiBold.ttf', 'Inter-SemiBold.ttf'],
+  ['https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Regular.ttf', 'Lora-Regular.ttf'],
+  ['https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Medium.ttf', 'Lora-Medium.ttf']
 ];
 
 console.log('Downloading fonts...');
