@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Platform, Alert } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useChatStore } from '../../store/chatStore';
 import { useSettingsStore, ThemeMode } from '../../store/settingsStore';
@@ -15,6 +15,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const currentChatId = useChatStore(state => state.currentChatId);
   const setCurrentChat = useChatStore(state => state.setCurrentChat);
   const addChat = useChatStore(state => state.addChat);
+  const deleteChat = useChatStore(state => state.deleteChat);
   const setActiveView = useChatStore(state => state.setActiveView);
   
   const { themeMode, setThemeMode } = useSettingsStore();
@@ -30,6 +31,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     setCurrentChat(id);
     setActiveView('chat');
     onClose();
+  };
+
+  const handleDeleteChat = (id: string, title: string) => {
+    Alert.alert(
+      "Удалить чат",
+      `Вы уверены, что хотите удалить чат "${title}"? Это действие нельзя отменить.`,
+      [
+        { text: "Отмена", style: "cancel" },
+        { text: "Удалить", style: "destructive", onPress: () => deleteChat(id) }
+      ]
+    );
   };
 
   const NavItem = ({ label, icon, view }: any) => (
@@ -87,21 +99,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.history}>
+      <ScrollView style={styles.history} showsVerticalScrollIndicator={false}>
         <Text style={[styles.sectionTitle, { color: theme.text.tertiary }]}>История</Text>
         {chats.map(chat => (
-          <TouchableOpacity 
-            key={chat.id} 
-            style={[
-              styles.chatItem, 
-              currentChatId === chat.id && { backgroundColor: theme.surface }
-            ]}
-            onPress={() => handleSelectChat(chat.id)}
-          >
-            <Text style={[styles.chatTitle, { color: theme.text.secondary }]} numberOfLines={1}>
-              {chat.title}
-            </Text>
-          </TouchableOpacity>
+          <View key={chat.id} style={[styles.chatItemWrapper, currentChatId === chat.id && { backgroundColor: theme.surface }]}>
+            <TouchableOpacity 
+              style={styles.chatItem}
+              onPress={() => handleSelectChat(chat.id)}
+            >
+              <Text style={[styles.chatTitle, { color: theme.text.secondary }]} numberOfLines={1}>
+                {chat.title}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteChat(chat.id, chat.title)}>
+                <Svg width="16" height="16" fill="none" stroke={theme.text.tertiary} viewBox="0 0 24 24">
+                    <Path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                </Svg>
+            </TouchableOpacity>
+          </View>
         ))}
       </ScrollView>
 
@@ -135,8 +151,10 @@ const styles = StyleSheet.create({
   newChatLabel: { fontSize: 15, fontFamily: fonts.medium },
   history: { flex: 1, paddingHorizontal: 12 },
   sectionTitle: { fontSize: 11, fontFamily: fonts.semiBold, textTransform: 'uppercase', marginBottom: 10, paddingHorizontal: 8, letterSpacing: 0.5 },
-  chatItem: { padding: 12, borderRadius: 10, marginBottom: 4 },
+  chatItemWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, marginBottom: 4, paddingRight: 8 },
+  chatItem: { flex: 1, padding: 12 },
   chatTitle: { fontSize: 14, fontFamily: fonts.regular },
+  deleteBtn: { padding: 8 },
   footer: { padding: 16 },
   navItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 4 },
   navIcon: { width: 24, alignItems: 'center' },

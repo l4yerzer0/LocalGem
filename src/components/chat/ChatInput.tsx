@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Text, Modal, Pressable } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Platform, Text, Modal, Pressable } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { fonts } from '../../theme/colors';
 import { useModelStore } from '../../store/modelStore';
@@ -40,10 +40,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onImagePick, isCen
 
   return (
     <View style={isCentered ? styles.centeredContainer : styles.bottomContainer}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
         <View style={[styles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <TextInput
             style={[styles.input, isCentered && styles.inputCenteredText, { color: theme.text.primary }]}
@@ -91,7 +87,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onImagePick, isCen
             </View>
           </View>
         </View>
-      </KeyboardAvoidingView>
 
       <Modal visible={isMenuOpen} transparent animationType="fade" onRequestClose={() => setIsMenuOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setIsMenuOpen(false)}>

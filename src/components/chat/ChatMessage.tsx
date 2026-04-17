@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, Image, Clipboard } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { MarkdownLite } from './MarkdownLite';
 import { useTheme } from '../../theme/useTheme';
@@ -90,6 +90,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, thinkin
 
             <MarkdownLite content={content} />
             
+            {!isUser && (
+              <TouchableOpacity 
+                onPress={() => Clipboard.setString(content)}
+                style={[styles.copyButton, { backgroundColor: theme.accent + '15', borderColor: theme.accent + '30' }]}
+              >
+                <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2">
+                  <Path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </Svg>
+                <Text style={[styles.copyLabel, { color: theme.accent }]}>Копировать</Text>
+              </TouchableOpacity>
+            )}
+            
             {stats && (
               <View style={styles.statsWrapper}>
                 <TouchableOpacity onPress={toggleStats} style={[styles.statsButton, { backgroundColor: theme.accent + '15', borderColor: theme.accent + '30' }]}>
@@ -140,6 +152,8 @@ const styles = StyleSheet.create({
   thinkingText: { fontSize: 13, fontFamily: fonts.regular, color: colors.text.tertiary, fontStyle: 'italic', lineHeight: 21 },
 
   statsWrapper: { marginTop: 14, width: '100%' },
+  copyButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(217, 119, 87, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 0.5, borderColor: 'rgba(217, 119, 87, 0.25)', marginBottom: 12 },
+  copyLabel: { fontSize: 11, fontFamily: fonts.semiBold, color: colors.accent },
   statsButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(217, 119, 87, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 0.5, borderColor: 'rgba(217, 119, 87, 0.25)' },
   statsLabel: { fontSize: 11, fontFamily: fonts.semiBold, color: colors.accent },
   expandedStats: { marginTop: 10, backgroundColor: '#111111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.border, width: '100%' },
