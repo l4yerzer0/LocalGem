@@ -110,6 +110,12 @@ export const ChatScreen: React.FC = () => {
     }
   }, []);
 
+  // При переключении чата обязательно сбрасываем движок, чтобы очистить KV-cache старого чата
+  useEffect(() => {
+    setInitialized(false);
+    setContextSynced(false);
+  }, [currentChatId]);
+
   const currentChat = chats.find(c => c.id === currentChatId);
 
   useEffect(() => {
@@ -124,8 +130,15 @@ export const ChatScreen: React.FC = () => {
     });
     const doneSub = eventEmitter.addListener('onResponseDone', (stats: any) => {
       if (isGeneratingTitleRef.current) return;
-      if (currentChatId) updateLastMessageWithStats(currentChatId, currentAssistantMsg.current, stats);
-      currentAssistantMsg.current = "";
+      if (currentChatId) {
+        // Берем актуальный текст из стейта, чтобы избежать гонки
+        const chat = useChatStore.getState().chats.find(c => c.id === currentChatId);
+        const lastMsg = chat?.messages[chat.messages.length - 1];
+        const finalContent = lastMsg?.content !== "..." ? lastMsg?.content : currentAssistantMsg.current;
+        
+        updateLastMessageWithStats(currentChatId, finalContent || "", stats);
+        currentAssistantMsg.current = "";
+      }
     });
     return () => { tokenSub.remove(); thinkingSub.remove(); doneSub.remove(); };
   }, [currentChatId]);
@@ -173,7 +186,7 @@ export const ChatScreen: React.FC = () => {
     try {
       if (isFirstMessage) {
         setIsSettingUpChat(true);
-        setSetupStatus("Загружаем модель...");
+        setSetupStatus("Загружаем ИИ...");
         
         if (!isInitialized) {
             await LiteRtModule.initializeModel(
@@ -193,13 +206,14 @@ export const ChatScreen: React.FC = () => {
         addMessage(currentChatId, 'assistant', "...");
         currentAssistantMsg.current = "";
 
-        setSetupStatus("Генерация ответа...");
+        setSetupStatus("Подготовка ответа...");
 
         const firstMessageDonePromise = new Promise((resolve) => {
-            const listener = eventEmitter.addListener('onResponseDone', (stats: any) => {
+            const listener = eventEmitter.addListener('onResponseDone', () => {
                 listener.remove();
-                if (currentChatId) updateLastMessageWithStats(currentChatId, currentAssistantMsg.current, stats);
-                currentAssistantMsg.current = "";
+                // Мы не вызываем updateLastMessageWithStats здесь, 
+                // так как это уже делает глобальный слушатель в useEffect!
+                // Иначе была гонка состояний, где currentAssistantMsg.current уже был пустым
                 resolve(true);
             });
         });
@@ -207,7 +221,6 @@ export const ChatScreen: React.FC = () => {
         LiteRtModule.sendMessage(text, imageToSend, settings.isThinkingEnabled);
         await firstMessageDonePromise;
 
-        setSetupStatus("Генерация названия...");
         isGeneratingTitleRef.current = true;
         try {
             const title = await LiteRtModule.generateTitle(userMessageText);
@@ -217,7 +230,6 @@ export const ChatScreen: React.FC = () => {
         }
         isGeneratingTitleRef.current = false;
 
-        setSetupStatus("Подготовка контекста...");
         // Перезапускаем модель, чтобы очистить KV-cache от генерации названия
         await LiteRtModule.initializeModel(
             activeModel.path, settings.backend, settings.temperature,
@@ -260,13 +272,13 @@ export const ChatScreen: React.FC = () => {
         // Вливаем историю только если контекст не синхронизирован (например, после генерации названия или рестарта)
         if (!isContextSynced && chat && chat.messages.length > 0) {
           setLoadingStatus("Синхронизация...");
-          // Используем более экономный формат промпта
-          let historyStr = "[Контекст предыдущего разговора]\n";
+          // Используем натуральный формат промпта
+          let historyStr = "Вот история нашего разговора для контекста:\n\n";
           const contextMsgs = chat.messages.slice(-8); 
           for (const msg of contextMsgs) {
-             historyStr += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+             historyStr += `${msg.role === 'user' ? 'Я' : 'Ты'}: ${msg.content}\n`;
           }
-          historyStr += `[Конец контекста]\n\nНовое сообщение: ${text}`;
+          historyStr += `\nА теперь ответь на мой новый вопрос: ${text}`;
           finalMessageToSend = historyStr;
           
           setContextSynced(true);
@@ -363,7 +375,7 @@ export const ChatScreen: React.FC = () => {
                     <ParamSlider label="Temperature" value={settings.temperature} min={0} max={2} step={0.1} onValueChange={(v: number) => { settings.setTemperature(v); setInitialized(false); }} />
                     <ParamSlider label="Top P" value={settings.topP} min={0} max={1} step={0.05} onValueChange={(v: number) => { settings.setTopP(v); setInitialized(false); }} />
                     <ParamSlider label="Top K" value={settings.topK} min={1} max={100} step={1} onValueChange={(v: number) => { settings.setTopK(v); setInitialized(false); }} />
-                    <ParamSlider label="Max Tokens" value={settings.maxTokens} min={128} max={4096} step={128} onValueChange={(v: number) => { settings.setMaxTokens(v); setInitialized(false); }} />
+                    <ParamSlider label="Max Tokens" value={settings.maxTokens} min={128} max={32768} step={128} onValueChange={(v: number) => { settings.setMaxTokens(v); setInitialized(false); }} />
                     <Text style={[styles.paramHint, { color: theme.text.tertiary }]}>Изменение параметров потребует перезагрузки модели при следующем сообщении.</Text>
                 </ScrollView>
             </View>

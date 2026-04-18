@@ -29,7 +29,7 @@ export const useSettingsStore = create<SettingsStore>()(
       temperature: 0.7,
       topK: 40,
       topP: 0.95,
-      maxTokens: 4096,
+      maxTokens: 8192,
       isThinkingEnabled: true,
       themeMode: 'system',
 
