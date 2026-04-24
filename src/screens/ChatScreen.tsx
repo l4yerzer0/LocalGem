@@ -105,8 +105,8 @@ export const ChatScreen: React.FC = () => {
   }, [chats.length]);
 
   useEffect(() => {
-    if (settings.maxTokens <= 1024) {
-      settings.setMaxTokens(4096);
+    if (settings.maxTokens > 8192) {
+      settings.setMaxTokens(8192);
     }
   }, []);
 
@@ -134,9 +134,13 @@ export const ChatScreen: React.FC = () => {
         // Берем актуальный текст из стейта, чтобы избежать гонки
         const chat = useChatStore.getState().chats.find(c => c.id === currentChatId);
         const lastMsg = chat?.messages[chat.messages.length - 1];
-        const finalContent = lastMsg?.content !== "..." ? lastMsg?.content : currentAssistantMsg.current;
         
-        updateLastMessageWithStats(currentChatId, finalContent || "", stats);
+        let finalContent = currentAssistantMsg.current;
+        if (!finalContent || finalContent.trim() === "") {
+            finalContent = "⚠️ Модель вернула пустой ответ. Возможно, превышен лимит контекста. Создайте новый чат.";
+        }
+        
+        updateLastMessageWithStats(currentChatId, finalContent, stats);
         currentAssistantMsg.current = "";
       }
     });
@@ -211,9 +215,6 @@ export const ChatScreen: React.FC = () => {
         const firstMessageDonePromise = new Promise((resolve) => {
             const listener = eventEmitter.addListener('onResponseDone', () => {
                 listener.remove();
-                // Мы не вызываем updateLastMessageWithStats здесь, 
-                // так как это уже делает глобальный слушатель в useEffect!
-                // Иначе была гонка состояний, где currentAssistantMsg.current уже был пустым
                 resolve(true);
             });
         });
@@ -221,24 +222,13 @@ export const ChatScreen: React.FC = () => {
         LiteRtModule.sendMessage(text, imageToSend, settings.isThinkingEnabled);
         await firstMessageDonePromise;
 
-        isGeneratingTitleRef.current = true;
-        try {
-            const title = await LiteRtModule.generateTitle(userMessageText);
-            if (title && title.length > 0) updateChatTitle(currentChatId, title);
-        } catch (error) {
-            updateChatTitle(currentChatId, userMessageText.substring(0, 50).trim());
-        }
-        isGeneratingTitleRef.current = false;
+        // Генерируем название из запроса без использования нейросети,
+        // чтобы не разрушать KV-cache диалога!
+        const fallbackTitle = userMessageText.substring(0, 30).trim();
+        updateChatTitle(currentChatId, fallbackTitle.length > 0 ? fallbackTitle + "..." : "Новый чат");
 
-        // Перезапускаем модель, чтобы очистить KV-cache от генерации названия
-        await LiteRtModule.initializeModel(
-            activeModel.path, settings.backend, settings.temperature,
-            settings.topK, settings.topP, settings.maxTokens
-        );
-        setInitialized(true);
-        // Модель чистая, значит контекст НЕ синхронизирован
-        setContextSynced(false);
-        
+        // Модель НЕ перезапускается, KV-cache остается нетронутым!
+        setContextSynced(true);
         setIsSettingUpChat(false);
         
         // Отправляем отложенное сообщение, если пользователь успел что-то написать
@@ -269,16 +259,19 @@ export const ChatScreen: React.FC = () => {
         
         let finalMessageToSend = text;
         
-        // Вливаем историю только если контекст не синхронизирован (например, после генерации названия или рестарта)
+        // Вливаем историю только если контекст не синхронизирован (например, при загрузке старого чата)
         if (!isContextSynced && chat && chat.messages.length > 0) {
           setLoadingStatus("Синхронизация...");
-          // Используем натуральный формат промпта
-          let historyStr = "Вот история нашего разговора для контекста:\n\n";
-          const contextMsgs = chat.messages.slice(-8); 
-          for (const msg of contextMsgs) {
-             historyStr += `${msg.role === 'user' ? 'Я' : 'Ты'}: ${msg.content}\n`;
+          
+          let historyStr = "Продолжи наш предыдущий диалог. Вот последние сообщения для контекста:\n\n";
+          let contextMsgs = chat.messages.slice(-8);
+          
+          for (let i = 0; i < contextMsgs.length; i++) {
+             const msg = contextMsgs[i];
+             historyStr += `${msg.role === 'user' ? 'Пользователь' : 'Ассистент'}: ${msg.content}\n`;
           }
-          historyStr += `\nА теперь ответь на мой новый вопрос: ${text}`;
+          
+          historyStr += `\nТеперь ответь на мое новое сообщение: ${text}`;
           finalMessageToSend = historyStr;
           
           setContextSynced(true);
